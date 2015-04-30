@@ -39,7 +39,12 @@ float distanceBetween(Vector3d point1, Vector3d point2) {
 // farthest away from the root. 
 // http://stackoverflow.com/questions/10115354/inverse-kinematics-with-opengl-eigen3-unstable-jacobian-pseudoinverse
 //*********************************************************
-Vector3d getEndPoint(int index = Segment::numSegments) {
+Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
+  Vector3d prevEndPoint;
+  prevEndPoint = Vector3d(0,0,0);
+  if (draw) {
+    glBegin(GL_LINES);
+  }
   Vector3d endPoint = Vector3d(0,0,0);
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
     Segment currentSegment    = (*Segment::segments)[i];
@@ -49,6 +54,16 @@ Vector3d getEndPoint(int index = Segment::numSegments) {
     AngleAxisd zRot           = AngleAxisd(rad[2], Vector3d(0, 0, -1));
     Translation3d translation = Translation3d(Vector3d(0, 0, currentSegment.length));
     endPoint                  = ((Affine3d) xRot*yRot*zRot*translation)*endPoint;
+    if (draw) {
+      prevEndPoint;
+      endPoint;
+    }
+    if (draw) {
+      prevEndPoint = endPoint;
+    }
+  }
+  if (draw) {
+    glEnd();
   }
   return endPoint;
 }
