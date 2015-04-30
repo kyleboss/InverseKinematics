@@ -189,23 +189,12 @@ void makeCircle(float rad, float horizOffset, float vertOffset, float distortY) 
 //***************************************************
 void myDisplay() {
 
+  // Start drawing
+  getEndPoint(Segment::numSegments, true);
 
-  //----------------------- ----------------------- -----------------------
-  // This is a quick hack to add a little bit of animation.
-  static float tip = 0.5f;
-  static float pacRad = 0.4f;
-  static float eyeRad = 0.05f;
-  static float mouthOpen = 0.0f;
-  const  float maxMouthOpen = 0.2f;
-  const  float stp = 0.01f;
-  const  float beg = 0.1f;
-  const  float end = 0.9f;
-  const  float circ = 2*PI;
-
-  tip += stp;
-  mouthOpen = fmod(tip, maxMouthOpen);
-  if (tip>end) tip = beg;
-  //----------------------- ----------------------- -----------------------
+  glFlush();
+  glutSwapBuffers();          // swap buffers (we earlier set double buffer)
+}
 
 
   glClear(GL_COLOR_BUFFER_BIT);                // clear the color buffer (sets everything to black)
