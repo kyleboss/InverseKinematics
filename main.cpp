@@ -194,7 +194,7 @@ void myDisplay() {
 
   glFlush();
   glutSwapBuffers();          // swap buffers (we earlier set double buffer)
-}
+
 
 
   glClear(GL_COLOR_BUFFER_BIT);                // clear the color buffer (sets everything to black)
