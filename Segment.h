@@ -13,4 +13,3 @@ class Segment {
     static std::vector<Segment> * segments;
 };
 int Segment::numSegments = 0;
-std::vector<Segment> * Segment::segments = new std::vector<Segment>();

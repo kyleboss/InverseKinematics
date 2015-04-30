@@ -22,6 +22,7 @@ Segment * youngestSeg;
 Segment * rootSeg;
 float acceptableDistance;
 Vector3d goal;
+std::vector<Segment> segments = std::vector<Segment>();
 
 //*********************************************************
 // distanceBetween
@@ -47,7 +48,8 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
   }
   Vector3d endPoint = Vector3d(0,0,0);
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
-    Segment currentSegment    = (*Segment::segments)[i];
+    cout << Segment::numSegments << endl;
+    Segment currentSegment    = segments[i];
     Vector3d rad              = M_PI*currentSegment.rot/180;
     AngleAxisd xRot           = AngleAxisd(rad[0], Vector3d(-1, 0, 0));
     AngleAxisd yRot           = AngleAxisd(rad[1], Vector3d(0, -1, 0));
@@ -114,7 +116,7 @@ void inverseKinematicsSolver() {
     distanceToGoal          = distanceBetween(endPoint, goal);
     Vector3d addToRots      = pseudoJacobian*lambda*distanceToGoal;
     for (int i = 0; i<Segment::numSegments; i++) {
-      (*Segment::segments)[i].rot += addToRots;
+      segments[i].rot += addToRots;
     } 
     float newDistanceToGoal = distanceBetween(endPoint, goal);
     if (distanceToGoal < newDistanceToGoal) {
@@ -190,7 +192,7 @@ void myDisplay() {
 
   glMatrixMode(GL_MODELVIEW);             // indicate we are specifying camera transformations
   glLoadIdentity();               // make sure transformation is "zero'd"
-
+  getEndPoint();
 
   // Start drawing
   glFlush();
@@ -206,6 +208,14 @@ int main (int argc, char *argv[]) {
   m(0,1) = -1;
   m(1,1) = m(1,0) + m(0,1);
   std::cout << m << std::endl;
+
+  Segment a = Segment(1);
+  Segment b = Segment(1);
+  Segment c = Segment(1);
+  segments.push_back(a);
+  segments.push_back(b);
+  segments.push_back(c);
+
 
   //This initializes glut
   glutInit(&argc, argv);
