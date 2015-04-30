@@ -53,7 +53,7 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
     AngleAxisd xRot           = AngleAxisd(rad[0], Vector3d(-1, 0, 0));
     AngleAxisd yRot           = AngleAxisd(rad[1], Vector3d(0, -1, 0));
     AngleAxisd zRot           = AngleAxisd(rad[2], Vector3d(0, 0, -1));
-    Translation3d translation = Translation3d(Vector3d(0, 0, currentSegment.length));
+    Translation3d translation = Translation3d(Vector3d(currentSegment.length, 0, 0));
     endPoint                  = ((Affine3d) xRot*yRot*zRot*translation)*endPoint;
     if (draw) {
       glVertex3f(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
@@ -126,13 +126,13 @@ void inverseKinematicsSolver() {
   }
 }
 
+#define PI 3.14159265
+
+using namespace std;
 
 //****************************************************
 // Some Classes
 //****************************************************
-
-class Viewport;
-
 class Viewport {
   public:
     int w, h; // width and height
@@ -142,35 +142,7 @@ class Viewport {
 //****************************************************
 // Global Variables
 //****************************************************
-Viewport  viewport;
-
-
-
-
-//****************************************************
-// Simple init function
-//****************************************************
-void initScene(){
-  GLfloat black[] = { 0.0, 0.0, 0.0, 1.0 };
-  GLfloat yellow[] = { 1.0, 1.0, 0.0, 1.0 };
-  GLfloat cyan[] = { 0.0, 1.0, 1.0, 1.0 };
-  GLfloat white[] = { 1.0, 1.0, 1.0, 1.0 };
-  GLfloat direction[] = { 1.0, 1.0, -1.0, 0.0 };
-
-  glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, cyan);
-  glMaterialfv(GL_FRONT, GL_SPECULAR, white);
-  glMaterialf(GL_FRONT, GL_SHININESS, 30);
-
-  glLightfv(GL_LIGHT0, GL_AMBIENT, black);
-  glLightfv(GL_LIGHT0, GL_DIFFUSE, yellow);
-  glLightfv(GL_LIGHT0, GL_SPECULAR, white);
-  glLightfv(GL_LIGHT0, GL_POSITION, direction);
-
-  glEnable(GL_LIGHTING);                
-  glEnable(GL_LIGHT0);  
-  glEnable(GL_DEPTH_TEST);
-}
-
+Viewport    viewport;
 
 //****************************************************
 // reshape viewport if the window is resized
@@ -179,14 +151,42 @@ void myReshape(int w, int h) {
   viewport.w = w;
   viewport.h = h;
 
-  glViewport (0,0,viewport.w,viewport.h);
+  glViewport(0,0,viewport.w,viewport.h);// sets the rectangle that will be the window
   glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
+  glLoadIdentity();                // loading the identity matrix for the screen
 
+  //----------- setting the projection -------------------------
+  // glOrtho sets left, right, bottom, top, zNear, zFar of the chord system
+
+
+  // glOrtho(-1, 1 + (w-400)/200.0 , -1 -(h-400)/200.0, 1, 1, -1); // resize type = add
+  // glOrtho(-w/400.0, w/400.0, -h/400.0, h/400.0, 1, -1); // resize type = center
+
+  glOrtho(-1, 1, -1, 1, 1, -1);    // resize type = stretch
+
+  //------------------------------------------------------------
 }
 
+
 //****************************************************
-// function that does the actual drawing of stuff
+// sets the window up
+//****************************************************
+void initScene(){
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to black, fully transparent
+
+  myReshape(viewport.w,viewport.h);
+}
+
+void makeCircle(float rad, float horizOffset, float vertOffset, float distortY) {
+  const  float circ = 2*PI;
+  for (float angle = 0; angle < circ; angle += 0.01) {
+    glVertex3f(rad*cos(angle)+horizOffset, distortY*rad*sin(angle)+vertOffset, 0.0f);
+  }
+}
+
+
+//***************************************************
+// function that does the actual drawing
 //***************************************************
 void myDisplay() {
 
@@ -213,46 +213,66 @@ void handle(unsigned char key, int x, int y) {
 
 
 
-int main (int argc, char *argv[]) {
+  glClear(GL_COLOR_BUFFER_BIT);                // clear the color buffer (sets everything to black)
 
-  MatrixXd m(2,2);
-  m(0,0) = 3;
-  m(1,0) = 2.5;
-  m(0,1) = -1;
-  m(1,1) = m(1,0) + m(0,1);
-  std::cout << m << std::endl;
+  glMatrixMode(GL_MODELVIEW);                  // indicate we are specifying camera transformations
+  glLoadIdentity();                            // make sure transformation is "zero'd"
 
+  //----------------------- code to draw objects --------------------------
+
+  glColor3f(0.75f,1.0f,0.0f);
   Segment a = Segment(1);
   Segment b = Segment(4);
   Segment c = Segment(2);
   segments.push_back(a);
   segments.push_back(b);
   segments.push_back(c);
+  getEndPoint(Segment::numSegments, true);
+
+  //-----------------------------------------------------------------------
+
+  glFlush();
+  glutSwapBuffers();                           // swap buffers (we earlier set double buffer)
+}
+
+//****************************************************
+// called by glut when there are no messages to handle
+//****************************************************
+void myFrameMove() {
+  //nothing here for now
+#ifdef _WIN32
+  Sleep(10);                                   //give ~10ms back to OS (so as not to waste the CPU)
+#endif
+  glutPostRedisplay(); // forces glut to call the display function (myDisplay())
+}
 
 
+//****************************************************
+// the usual stuff, nothing exciting here
+//****************************************************
+int main(int argc, char *argv[]) {
   //This initializes glut
   glutInit(&argc, argv);
 
-
   //This tells glut to use a double-buffered window with red, green, and blue channels 
-  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 
   // Initalize theviewport size
-  viewport.w = 700;
-  viewport.h = 700;
+  viewport.w = 400;
+  viewport.h = 400;
 
   //The size and position of the window
   glutInitWindowSize(viewport.w, viewport.h);
-  glutInitWindowPosition(0,0);
-  glutCreateWindow(argv[0]);
+  glutInitWindowPosition(0, 0);
+  glutCreateWindow("CS184!");
 
   initScene();              // quick function to set up scene
   glutDisplayFunc(myDisplay);       // function to run when its time to draw something
   glutReshapeFunc(myReshape);       // function to run when the window gets resized
   glutKeyboardFunc(handle); //exit on space
-  glutMainLoop();             // infinite loop that will keep drawing and resizing
-  
+  glutIdleFunc(myFrameMove);                   // function to run when not handling any other task
 
-  // and whatever else
+  glutMainLoop();             // infinite loop that will keep drawing and resizing
+ 
   return 0;
 }
