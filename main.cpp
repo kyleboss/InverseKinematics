@@ -17,7 +17,6 @@ using Eigen::Affine3d;
 using Eigen::AngleAxisd;
 using Eigen::Translation3d;
 using namespace std;
-
 Segment * youngestSeg;
 Segment * rootSeg;
 float acceptableDistance;
@@ -44,11 +43,11 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
   Vector3d prevEndPoint;
   prevEndPoint = Vector3d(0,0,0);
   if (draw) {
-    glBegin(GL_LINES);
+    glColor3f(1,1,1);
+    glBegin(GL_POINTS);
   }
   Vector3d endPoint = Vector3d(0,0,0);
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
-    cout << Segment::numSegments << endl;
     Segment currentSegment    = segments[i];
     Vector3d rad              = M_PI*currentSegment.rot/180;
     AngleAxisd xRot           = AngleAxisd(rad[0], Vector3d(-1, 0, 0));
@@ -57,8 +56,10 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
     Translation3d translation = Translation3d(Vector3d(0, 0, currentSegment.length));
     endPoint                  = ((Affine3d) xRot*yRot*zRot*translation)*endPoint;
     if (draw) {
-      prevEndPoint;
-      endPoint;
+      glVertex3f(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
+      glVertex3f(endPoint[0],endPoint[1],endPoint[2]);
+      cout << "for segment of len " << currentSegment.length << " prev is " 
+           << prevEndPoint << " and curr is " << endPoint << endl;
     }
     if (draw) {
       prevEndPoint = endPoint;
@@ -188,18 +189,28 @@ void myReshape(int w, int h) {
 // function that does the actual drawing of stuff
 //***************************************************
 void myDisplay() {
-  glClear(GL_COLOR_BUFFER_BIT);       // clear the color buffer
 
-  glMatrixMode(GL_MODELVIEW);             // indicate we are specifying camera transformations
-  glLoadIdentity();               // make sure transformation is "zero'd"
-  getEndPoint();
-
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(-3.5, 3.5, -3.5, 3.5, 5, -5);
+ 
   // Start drawing
   getEndPoint(Segment::numSegments, true);
 
   glFlush();
   glutSwapBuffers();          // swap buffers (we earlier set double buffer)
 }
+
+void handle(unsigned char key, int x, int y) {
+  switch (key) {
+    case 32: //space
+      exit(0);
+      break;
+  }
+  glutPostRedisplay();
+}
+
 
 
 int main (int argc, char *argv[]) {
@@ -212,8 +223,8 @@ int main (int argc, char *argv[]) {
   std::cout << m << std::endl;
 
   Segment a = Segment(1);
-  Segment b = Segment(1);
-  Segment c = Segment(1);
+  Segment b = Segment(4);
+  Segment c = Segment(2);
   segments.push_back(a);
   segments.push_back(b);
   segments.push_back(c);
@@ -238,7 +249,7 @@ int main (int argc, char *argv[]) {
   initScene();              // quick function to set up scene
   glutDisplayFunc(myDisplay);       // function to run when its time to draw something
   glutReshapeFunc(myReshape);       // function to run when the window gets resized
-
+  glutKeyboardFunc(handle); //exit on space
   glutMainLoop();             // infinite loop that will keep drawing and resizing
   
 
