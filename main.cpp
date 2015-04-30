@@ -200,7 +200,7 @@ void myDisplay() {
 
   glFlush();
   glutSwapBuffers();          // swap buffers (we earlier set double buffer)
-}
+
 
 void handle(unsigned char key, int x, int y) {
   switch (key) {
