@@ -193,6 +193,8 @@ void myDisplay() {
 
 
   // Start drawing
+  getEndPoint(Segment::numSegments, true);
+
   glFlush();
   glutSwapBuffers();          // swap buffers (we earlier set double buffer)
 }
@@ -206,6 +208,7 @@ int main (int argc, char *argv[]) {
   m(0,1) = -1;
   m(1,1) = m(1,0) + m(0,1);
   std::cout << m << std::endl;
+
 
   //This initializes glut
   glutInit(&argc, argv);
