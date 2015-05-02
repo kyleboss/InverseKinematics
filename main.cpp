@@ -11,6 +11,8 @@
 #include "Eigen/Dense"
 #include "Segment.h"
 
+#define PI 3.14159265
+
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -33,6 +35,29 @@ float distanceBetween(Vector3d point1, Vector3d point2) {
 }
 
 //*********************************************************
+// changeColor
+// Changes the color of the openGL outputs.
+//*********************************************************
+void changeColor(float r, float g, float b) {
+  glColor3f(r,g,b);
+}
+
+//*********************************************************
+// alterColorForDebugging
+// Helper function to better understand the IK Solver from
+// within the getEndPoint function.
+//*********************************************************
+void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
+  if (i==0) changeColor(1,0,0);
+  if (i==1) changeColor(0,1,0);
+  if (i==2) changeColor(0,0,1);
+  if (i==3) changeColor(1,0,1);
+  cout << "distance: " << distanceBetween(prevEndPoint, endPoint) << endl;  
+  glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
+  glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
+}
+
+//*********************************************************
 // getEndPoint
 // Determines the end-point location of the segment that
 // is index-amount of hops away from the root. If no index
@@ -41,43 +66,37 @@ float distanceBetween(Vector3d point1, Vector3d point2) {
 // http://stackoverflow.com/questions/10115354/inverse-kinematics-with-opengl-eigen3-unstable-jacobian-pseudoinverse
 //*********************************************************
 Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
-  Vector3d prevEndPoint = Vector3d(0,0,0);
+  Vector3d prevEndPoint, rad, endPoint = Vector3d(0,0,0);
+  AngleAxisd xRot, yRot, zRot;
+  Segment currentSegment;
+  Translation3d translation;
+
   if (draw) {
     glPointSize(6);
     glLineWidth(6);
     glBegin(GL_LINES);
   }
-  Vector3d endPoint = Vector3d(0,0,0);
+
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
-    Segment currentSegment    = segments[i];
-    Vector3d rad              = M_PI*currentSegment.rot/180;
-    AngleAxisd xRot           = AngleAxisd(rad[0], Vector3d(-1, 0, 0));
-    AngleAxisd yRot           = AngleAxisd(rad[1], Vector3d(0, -1, 0));
-    AngleAxisd zRot           = AngleAxisd(rad[2], Vector3d(0, 0, -1));
-    Translation3d translation = Translation3d(Vector3d(currentSegment.length, 0, 0));
-    endPoint                  = ((Affine3d) xRot*yRot*zRot*translation)*endPoint;
+    currentSegment  = segments[i];
+    rad             = M_PI*currentSegment.rot/180;
+    xRot            = AngleAxisd(rad[0], Vector3d(-1, 0, 0));
+    yRot            = AngleAxisd(rad[1], Vector3d(0, -1, 0));
+    zRot            = AngleAxisd(rad[2], Vector3d(0, 0, -1));
+    translation     = Translation3d(Vector3d(currentSegment.length, 0, 0));
+    endPoint        = ((Affine3d) xRot*yRot*zRot*translation)*endPoint;
+
     if (draw) {
-      if (i==0) {
-        glColor3f(1,0,0);
-      } else if(i==1) {
-        glColor3f(0,1,0);
-      } else if(i==2) {
-        glColor3f(0,0,1);
-      } else if(i==3) {
-        glColor3f(1,0,1);
-      }
-      cout << "distance: " << distanceBetween(prevEndPoint, endPoint) << endl;  
-      glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
-      glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
-    }
-    if (draw) {
+      alterColorForDebugging(i, prevEndPoint, endPoint);
       prevEndPoint = endPoint;
     }
   }
+
   if (draw) {
     glEnd();
-    glColor3f(1,1,1);
+    changeColor(1,1,1);
   }
+
   return endPoint;
 }
 
@@ -92,19 +111,24 @@ MatrixXd computeJacobian() {
   Vector3d xVec     = Vector3d(1,0,0);
   Vector3d yVec     = Vector3d(0,1,0);
   Vector3d zVec     = Vector3d(0,0,1);
+  Vector3d xCol, yCol, zCol, endPoint, difference = Vector3d(0,0,0);
+
   for (int i=0; i<Segment::numSegments; i++) {
-    Vector3d endPoint   = getEndPoint(i+1);
-    Vector3d difference = goal-endPoint;
-    Vector3d xCol = Vector3d(0,0,0);
-    Vector3d yCol = Vector3d(0,0,0);
-    Vector3d zCol = Vector3d(0,0,0);
+    endPoint    = getEndPoint(i+1);
+    difference  = goal-endPoint;
+    xCol        = Vector3d(0,0,0);
+    yCol        = Vector3d(0,0,0);
+    zCol        = Vector3d(0,0,0);
+
     xCol       += xVec.cross(difference);
     yCol       += yVec.cross(difference);
     zCol       += zVec.cross(difference);
+
     jacobian.col(3*i+0) = xCol;
     jacobian.col(3*i+1) = yCol;
     jacobian.col(3*i+2) = zCol;
   }
+
   return jacobian;
 }
 
@@ -116,47 +140,49 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix) {
   return originalMatrix.transpose()*((originalMatrix*originalMatrix.transpose()).inverse());
 }
 
+//*********************************************************
+// updateSegmentRotations
+// Updates a segment's degree of rotation given a vector
+// of rotational degree values.
+//*********************************************************
+void updateSegmentRotations(VectorXd addToRots) {
+  for (int i = 0; i<Segment::numSegments; i++) {
+    segments[i].rot[0] = fmod((segments[i].rot[0] + addToRots[i*3+0]), 360);
+    segments[i].rot[1] = fmod((segments[i].rot[1] + addToRots[i*3+1]), 360);
+    segments[i].rot[2] = fmod((segments[i].rot[2] + addToRots[i*3+2]), 360);
+  } 
+}
+
 //********************************************************
 // inverseKinematicsSolver
 // Solves the Inverse Kinematics Problem.
 //*********************************************************
 void inverseKinematicsSolver() {
-  Vector3d endPoint     = getEndPoint();
-  float distanceToGoal  = distanceBetween(endPoint, goal);
-  double lambda         = 0.1;
+  Vector3d endPoint         = getEndPoint();
+  float distanceToGoal      = distanceBetween(endPoint, goal);
+  double lambda             = 0.1;
+  int numCalcs              = 0;
   float newDistanceToGoal;
   MatrixXd jacobian;
   MatrixXd pseudoJacobian;
   VectorXd addToRots;
-  int numCalcsBeforeGiveUp = 10000;
-  int numCalcs = 0;
-  cout << "Distance: " << distanceToGoal << endl;
-  cout << "endPoint: " << endPoint << endl;
-  cout << "goal: " << goal << endl;
-  while (distanceToGoal > acceptableDistance && numCalcs < numCalcsBeforeGiveUp) {
+  // cout << "Distance: "  << distanceToGoal << endl;
+  // cout << "endPoint: "  << endPoint       << endl;
+  // cout << "goal: "      << goal           << endl;
+
+  while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
     numCalcs++;
-    cout << "Distance: " << distanceToGoal << endl;
     jacobian       = computeJacobian();
     pseudoJacobian = computePseudoInverse(jacobian);
-    distanceToGoal          = distanceBetween(endPoint, goal);
+    distanceToGoal = distanceBetween(endPoint, goal);
     addToRots      = pseudoJacobian*lambda*(goal-endPoint);
-    for (int i = 0; i<Segment::numSegments; i++) {
-      segments[i].rot[0] = fmod((segments[i].rot[0] + addToRots[i*3+0]), 360);
-      segments[i].rot[1] = fmod((segments[i].rot[1] + addToRots[i*3+1]), 360);
-      segments[i].rot[2] = fmod((segments[i].rot[2] + addToRots[i*3+2]), 360);
-      // cout << "segments[i[.rot: " << jacobian << endl;
-    } 
-    endPoint     = getEndPoint();
+    updateSegmentRotations(addToRots);
+    endPoint          = getEndPoint();
     newDistanceToGoal = distanceBetween(endPoint, goal);
-    if (distanceToGoal < newDistanceToGoal) {
-      lambda*=.5;
-    }
+    if (distanceToGoal < newDistanceToGoal) lambda*=.5;
   }
 }
 
-#define PI 3.14159265
-
-using namespace std;
 
 //****************************************************
 // Some Classes
@@ -234,7 +260,7 @@ void myDisplay() {
 
   //----------------------- code to draw objects --------------------------
 
-  glColor3f(0.75f,1.0f,0.0f);
+  changeColor(0.75f,1.0f,0.0f);
   Segment a = Segment(1);
   Segment b = Segment(1);
   // Segment c = Segment(1);
