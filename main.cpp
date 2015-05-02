@@ -24,7 +24,7 @@ using namespace std;
 Segment * youngestSeg;
 Segment * rootSeg;
 float acceptableDistance      = .001;
-Vector3d goal                 = Vector3d(2, 2, 0);
+Vector3d goal                 = Vector3d(3, 0, 0);
 std::vector<Segment> segments = std::vector<Segment>();
 
 //*********************************************************
@@ -53,7 +53,8 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
   if (i==1) changeColor(0,1,0);
   if (i==2) changeColor(0,0,1);
   if (i==3) changeColor(1,0,1);
-  cout << "distance: " << distanceBetween(prevEndPoint, endPoint) << endl;  
+  cout << "distance: " << distanceBetween(prevEndPoint, endPoint) << endl; 
+    cout << "pt1 " << prevEndPoint << " pt2 " << endPoint << endl; 
   glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
   glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
 }
@@ -67,43 +68,20 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
 // http://stackoverflow.com/questions/10115354/inverse-kinematics-with-opengl-eigen3-unstable-jacobian-pseudoinverse
 //*********************************************************
 Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
-  Vector3d prevEndPoint, rad, endPoint = Vector3d(0,0,0);
+  Vector3d prevEndPoint = Vector3d(0,0,0);
+  Vector3d rad = Vector3d(0,0,0);
+  Vector3d endPoint = Vector3d(0,0,0);
   AngleAxisd xRot, yRot, zRot;
   Segment currentSegment;
   Translation3d translation;
 
   if (draw) {
-<<<<<<< HEAD
-=======
     glPointSize(6);
     glLineWidth(6);
->>>>>>> origin/master
     glBegin(GL_LINES);
   }
 
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
-<<<<<<< HEAD
-    Segment currentSegment    = segments[i];
-    Vector3d rad              = M_PI*currentSegment.rot/180;
-    AngleAxisd xRot           = AngleAxisd(rad[0], Vector3d(-1, 0, 0));
-    AngleAxisd yRot           = AngleAxisd(rad[1], Vector3d(0, -1, 0));
-    AngleAxisd zRot           = AngleAxisd(rad[2], Vector3d(0, 0, -1));
-    Translation3d translation = Translation3d(Vector3d(currentSegment.length, 0, 0));
-    endPoint                  = ((Affine3d) xRot*yRot*zRot*translation)*endPoint;
-    if (draw) {
-      if (i == 1) {
-        glColor3f(1.0,0.0,0.0);
-        cout << "second";        
-      }
-      if (i == 2) {
-        glColor3f(0.0,1.0,0.0);      
-        cout << "third";        
-      }
-      glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
-      glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
-      cout << endPoint << endl;
-    }
-=======
     currentSegment  = segments[i];
     rad             = M_PI*currentSegment.rot/180;
     xRot            = AngleAxisd(rad[0], Vector3d(-1, 0, 0));
@@ -112,7 +90,6 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
     translation     = Translation3d(Vector3d(currentSegment.length, 0, 0));
     endPoint        = ((Affine3d) xRot*yRot*zRot*translation)*endPoint;
 
->>>>>>> origin/master
     if (draw) {
       alterColorForDebugging(i, prevEndPoint, endPoint);
       prevEndPoint = endPoint;
@@ -138,7 +115,7 @@ MatrixXd computeJacobian() {
   Vector3d xVec     = Vector3d(1,0,0);
   Vector3d yVec     = Vector3d(0,1,0);
   Vector3d zVec     = Vector3d(0,0,1);
-  Vector3d xCol, yCol, zCol, endPoint, difference = Vector3d(0,0,0);
+  Vector3d xCol, yCol, zCol, endPoint, difference;
 
   for (int i=0; i<Segment::numSegments; i++) {
     endPoint    = getEndPoint(i+1);
@@ -164,7 +141,7 @@ MatrixXd computeJacobian() {
 // Computes the pseudoinverse of a given matrix.
 //*********************************************************
 MatrixXd computePseudoInverse(MatrixXd originalMatrix) {
-  return originalMatrix.transpose()*((originalMatrix*originalMatrix.transpose()).inverse());
+  return ((originalMatrix.transpose()*originalMatrix).inverse())*originalMatrix.transpose();
 }
 
 //*********************************************************
@@ -196,6 +173,7 @@ void inverseKinematicsSolver() {
   // cout << "Distance: "  << distanceToGoal << endl;
   // cout << "endPoint: "  << endPoint       << endl;
   // cout << "goal: "      << goal           << endl;
+  //cout << "hi" << endl;
 
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
     numCalcs++;
@@ -259,8 +237,6 @@ void initScene(){
 }
 
 
-<<<<<<< HEAD
-=======
 void handle(unsigned char key, int x, int y) {
   switch (key) {
     case 32: //space
@@ -270,22 +246,17 @@ void handle(unsigned char key, int x, int y) {
   glutPostRedisplay();
 }
 
->>>>>>> origin/master
 //***************************************************
 // function that does the actual drawing
 //***************************************************
 void myDisplay() {
-<<<<<<< HEAD
 
   // Start drawing
-  getEndPoint(Segment::numSegments, true);
+  // getEndPoint(Segment::numSegments, true);
 
   glFlush();
   glutSwapBuffers();          // swap buffers (we earlier set double buffer)
 
-
-=======
->>>>>>> origin/master
 
   glClear(GL_COLOR_BUFFER_BIT);                // clear the color buffer (sets everything to black)
 
@@ -294,18 +265,11 @@ void myDisplay() {
 
   //----------------------- code to draw objects --------------------------
 
-<<<<<<< HEAD
-  glColor3f(0.75f,1.0f,0.0f);
-  Segment a = Segment(0.1);
-  Segment b = Segment(0.2);
-  Segment c = Segment(0.3);
-=======
   changeColor(0.75f,1.0f,0.0f);
   Segment a = Segment(1);
   Segment b = Segment(1);
   // Segment c = Segment(1);
   // Segment d = Segment(1);
->>>>>>> origin/master
   segments.push_back(a);
   segments.push_back(b);
   // segments.push_back(c);
@@ -325,15 +289,6 @@ void myDisplay() {
   glutSwapBuffers();                           // swap buffers (we earlier set double buffer)
 }
 
-<<<<<<< HEAD
-void handle(unsigned char key, int x, int y) {
-  switch (key) {
-    case 32: //space
-      exit(0);
-      break;
-  }
-  glutPostRedisplay();
-=======
 //****************************************************
 // called by glut when there are no messages to handle
 //****************************************************
@@ -343,7 +298,6 @@ void myFrameMove() {
 //   Sleep(10);                                   //give ~10ms back to OS (so as not to waste the CPU)
 // #endif
 //   glutPostRedisplay(); // forces glut to call the display function (myDisplay())
->>>>>>> origin/master
 }
 
 
