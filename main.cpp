@@ -18,7 +18,6 @@ using Eigen::Affine3d;
 using Eigen::AngleAxisd;
 using Eigen::Translation3d;
 using namespace std;
-
 Segment * youngestSeg;
 Segment * rootSeg;
 float acceptableDistance      = .001;
@@ -214,18 +213,19 @@ void makeCircle(float rad, float horizOffset, float vertOffset, float distortY) 
 }
 
 
+void handle(unsigned char key, int x, int y) {
+  switch (key) {
+    case 32: //space
+      exit(0);
+      break;
+  }
+  glutPostRedisplay();
+}
+
 //***************************************************
 // function that does the actual drawing
 //***************************************************
 void myDisplay() {
-
-  // Start drawing
-  // getEndPoint(Segment::numSegments, true);
-
-  glFlush();
-  glutSwapBuffers();          // swap buffers (we earlier set double buffer)
-
-
 
   glClear(GL_COLOR_BUFFER_BIT);                // clear the color buffer (sets everything to black)
 
@@ -289,12 +289,13 @@ int main(int argc, char *argv[]) {
   glutInitWindowPosition(0, 0);
   glutCreateWindow("CS184!");
 
-  initScene();                                 // quick function to set up scene
-
-  glutDisplayFunc(myDisplay);                  // function to run when its time to draw something
-  glutReshapeFunc(myReshape);                  // function to run when the window gets resized
+  initScene();              // quick function to set up scene
+  glutDisplayFunc(myDisplay);       // function to run when its time to draw something
+  glutReshapeFunc(myReshape);       // function to run when the window gets resized
+  glutKeyboardFunc(handle); //exit on space
   glutIdleFunc(myFrameMove);                   // function to run when not handling any other task
-  glutMainLoop();                              // infinite loop that will keep drawing and resizing and whatever else
 
+  glutMainLoop();             // infinite loop that will keep drawing and resizing
+ 
   return 0;
 }
