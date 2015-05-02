@@ -13,6 +13,9 @@
 
 #define PI 3.14159265
 
+using Eigen::JacobiSVD;
+using Eigen::ComputeThinU;
+using Eigen::ComputeThinV;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -24,7 +27,7 @@ using namespace std;
 Segment * youngestSeg;
 Segment * rootSeg;
 float acceptableDistance      = .001;
-Vector3d goal                 = Vector3d(4, 0, 0);
+Vector3d goal                 = Vector3d(3, 0, 0);
 
 std::vector<Segment> segments = std::vector<Segment>();
 
@@ -137,8 +140,9 @@ MatrixXd computeJacobian() {
 // computePseudoInverse
 // Computes the pseudoinverse of a given matrix.
 //*********************************************************
-MatrixXd computePseudoInverse(MatrixXd originalMatrix) {
-  return ((originalMatrix.transpose()*originalMatrix).inverse())*originalMatrix.transpose();
+MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d endPoint) {
+    JacobiSVD<MatrixXd> svd (originalMatrix,ComputeThinU | ComputeThinV);
+    return svd.solve(goal-endPoint);
 }
 
 //*********************************************************
@@ -176,10 +180,10 @@ void inverseKinematicsSolver() {
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
     numCalcs++;
     jacobian       = computeJacobian();
-    pseudoJacobian = computePseudoInverse(jacobian);
     cout << "After psuedo-inversing: " << pseudoJacobian << endl;
     distanceToGoal = distanceBetween(endPoint, goal);
-    addToRots      = pseudoJacobian*lambda*(goal-endPoint);
+    pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
+    addToRots      = pseudoJacobian*lambda;
     updateSegmentRotations(addToRots);
     endPoint          = getEndPoint();
     newDistanceToGoal = distanceBetween(endPoint, goal);
@@ -234,7 +238,6 @@ void initScene(){
 
   myReshape(viewport.w,viewport.h);
 }
-
 
 void handle(unsigned char key, int x, int y) {
   switch (key) {
