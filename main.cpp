@@ -20,6 +20,7 @@ using Eigen::Affine3d;
 using Eigen::AngleAxisd;
 using Eigen::Translation3d;
 using namespace std;
+
 Segment * youngestSeg;
 Segment * rootSeg;
 float acceptableDistance      = .001;
@@ -228,14 +229,9 @@ void initScene(){
   myReshape(viewport.w,viewport.h);
 }
 
-void makeCircle(float rad, float horizOffset, float vertOffset, float distortY) {
-  const  float circ = 2*PI;
-  for (float angle = 0; angle < circ; angle += 0.01) {
-    glVertex3f(rad*cos(angle)+horizOffset, distortY*rad*sin(angle)+vertOffset, 0.0f);
-  }
-}
 
-
+<<<<<<< HEAD
+=======
 void handle(unsigned char key, int x, int y) {
   switch (key) {
     case 32: //space
@@ -245,10 +241,14 @@ void handle(unsigned char key, int x, int y) {
   glutPostRedisplay();
 }
 
+>>>>>>> origin/master
 //***************************************************
 // function that does the actual drawing
 //***************************************************
 void myDisplay() {
+
+  // Start drawing
+  // getEndPoint(Segment::numSegments, true);
 
   glClear(GL_COLOR_BUFFER_BIT);                // clear the color buffer (sets everything to black)
 
@@ -304,21 +304,20 @@ int main(int argc, char *argv[]) {
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 
   // Initalize theviewport size
-  viewport.w = 400;
-  viewport.h = 400;
+  viewport.w = 700;
+  viewport.h = 700;
 
   //The size and position of the window
   glutInitWindowSize(viewport.w, viewport.h);
   glutInitWindowPosition(0, 0);
   glutCreateWindow("CS184!");
 
-  initScene();              // quick function to set up scene
-  glutDisplayFunc(myDisplay);       // function to run when its time to draw something
-  glutReshapeFunc(myReshape);       // function to run when the window gets resized
+  initScene();                                 // quick function to set up scene
   glutKeyboardFunc(handle); //exit on space
-  glutIdleFunc(myFrameMove);                   // function to run when not handling any other task
 
-  glutMainLoop();             // infinite loop that will keep drawing and resizing
- 
+  glutDisplayFunc(myDisplay);                  // function to run when its time to draw something
+  glutReshapeFunc(myReshape);                  // function to run when the window gets resized
+  glutMainLoop();                              // infinite loop that will keep drawing and resizing and whatever else
+
   return 0;
 }
