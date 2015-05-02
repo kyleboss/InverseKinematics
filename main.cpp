@@ -23,7 +23,7 @@ using namespace std;
 Segment * youngestSeg;
 Segment * rootSeg;
 float acceptableDistance      = .001;
-Vector3d goal                 = Vector3d(2, 2, 0);
+Vector3d goal                 = Vector3d(1, 1, 0);
 std::vector<Segment> segments = std::vector<Segment>();
 
 //*********************************************************
@@ -66,10 +66,11 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
 // http://stackoverflow.com/questions/10115354/inverse-kinematics-with-opengl-eigen3-unstable-jacobian-pseudoinverse
 //*********************************************************
 Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
-  Vector3d prevEndPoint, rad, endPoint = Vector3d(0,0,0);
+  Vector3d prevEndPoint, rad, endPoint;
   AngleAxisd xRot, yRot, zRot;
   Segment currentSegment;
   Translation3d translation;
+  prevEndPoint = Vector3d(0,0,0);
 
   if (draw) {
     glPointSize(6);
@@ -84,12 +85,9 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
     yRot            = AngleAxisd(rad[1], Vector3d(0, -1, 0));
     zRot            = AngleAxisd(rad[2], Vector3d(0, 0, -1));
     translation     = Translation3d(Vector3d(currentSegment.length, 0, 0));
-    endPoint        = ((Affine3d) xRot*yRot*zRot*translation)*endPoint;
-
-    if (draw) {
-      alterColorForDebugging(i, prevEndPoint, endPoint);
-      prevEndPoint = endPoint;
-    }
+    endPoint        = ((Affine3d) xRot*yRot*zRot*translation)*prevEndPoint;
+    if (draw) alterColorForDebugging(i, prevEndPoint, endPoint);
+    prevEndPoint = endPoint;
   }
 
   if (draw) {
@@ -111,7 +109,7 @@ MatrixXd computeJacobian() {
   Vector3d xVec     = Vector3d(1,0,0);
   Vector3d yVec     = Vector3d(0,1,0);
   Vector3d zVec     = Vector3d(0,0,1);
-  Vector3d xCol, yCol, zCol, endPoint, difference = Vector3d(0,0,0);
+  Vector3d xCol, yCol, zCol, endPoint, difference;
 
   for (int i=0; i<Segment::numSegments; i++) {
     endPoint    = getEndPoint(i+1);
@@ -137,6 +135,7 @@ MatrixXd computeJacobian() {
 // Computes the pseudoinverse of a given matrix.
 //*********************************************************
 MatrixXd computePseudoInverse(MatrixXd originalMatrix) {
+  cout << "Original: " << originalMatrix << endl;
   return originalMatrix.transpose()*((originalMatrix*originalMatrix.transpose()).inverse());
 }
 
@@ -166,14 +165,12 @@ void inverseKinematicsSolver() {
   MatrixXd jacobian;
   MatrixXd pseudoJacobian;
   VectorXd addToRots;
-  // cout << "Distance: "  << distanceToGoal << endl;
-  // cout << "endPoint: "  << endPoint       << endl;
-  // cout << "goal: "      << goal           << endl;
 
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
     numCalcs++;
     jacobian       = computeJacobian();
     pseudoJacobian = computePseudoInverse(jacobian);
+    cout << "After psuedo-inversing: " << pseudoJacobian << endl;
     distanceToGoal = distanceBetween(endPoint, goal);
     addToRots      = pseudoJacobian*lambda*(goal-endPoint);
     updateSegmentRotations(addToRots);
@@ -263,11 +260,11 @@ void myDisplay() {
   changeColor(0.75f,1.0f,0.0f);
   Segment a = Segment(1);
   Segment b = Segment(1);
-  // Segment c = Segment(1);
+  Segment c = Segment(1);
   // Segment d = Segment(1);
   segments.push_back(a);
   segments.push_back(b);
-  // segments.push_back(c);
+  segments.push_back(c);
   // segments.push_back(d);
   inverseKinematicsSolver();
   getEndPoint(Segment::numSegments, true);
