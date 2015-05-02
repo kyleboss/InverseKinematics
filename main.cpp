@@ -13,6 +13,9 @@
 
 #define PI 3.14159265
 
+using Eigen::JacobiSVD;
+using Eigen::ComputeThinU;
+using Eigen::ComputeThinV;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -24,7 +27,7 @@ using namespace std;
 Segment * youngestSeg;
 Segment * rootSeg;
 float acceptableDistance      = .001;
-Vector3d goal                 = Vector3d(1, 1, 0);
+Vector3d goal                 = Vector3d(3, 0, 0);
 std::vector<Segment> segments = std::vector<Segment>();
 
 //*********************************************************
@@ -135,9 +138,9 @@ MatrixXd computeJacobian() {
 // computePseudoInverse
 // Computes the pseudoinverse of a given matrix.
 //*********************************************************
-MatrixXd computePseudoInverse(MatrixXd originalMatrix) {
-  cout << "Original: " << originalMatrix << endl;
-  return originalMatrix.transpose()*((originalMatrix*originalMatrix.transpose()).inverse());
+MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d endPoint) {
+    JacobiSVD<MatrixXd> svd (originalMatrix,ComputeThinU | ComputeThinV);
+    return svd.solve(goal-endPoint);
 }
 
 //*********************************************************
@@ -170,10 +173,10 @@ void inverseKinematicsSolver() {
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
     numCalcs++;
     jacobian       = computeJacobian();
-    pseudoJacobian = computePseudoInverse(jacobian);
     cout << "After psuedo-inversing: " << pseudoJacobian << endl;
     distanceToGoal = distanceBetween(endPoint, goal);
-    addToRots      = pseudoJacobian*lambda*(goal-endPoint);
+    pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
+    addToRots      = pseudoJacobian*lambda;
     updateSegmentRotations(addToRots);
     endPoint          = getEndPoint();
     newDistanceToGoal = distanceBetween(endPoint, goal);
@@ -229,9 +232,6 @@ void initScene(){
   myReshape(viewport.w,viewport.h);
 }
 
-
-<<<<<<< HEAD
-=======
 void handle(unsigned char key, int x, int y) {
   switch (key) {
     case 32: //space
@@ -241,7 +241,6 @@ void handle(unsigned char key, int x, int y) {
   glutPostRedisplay();
 }
 
->>>>>>> origin/master
 //***************************************************
 // function that does the actual drawing
 //***************************************************
@@ -260,11 +259,11 @@ void myDisplay() {
   changeColor(0.75f,1.0f,0.0f);
   Segment a = Segment(1);
   Segment b = Segment(1);
-  Segment c = Segment(1);
+  // Segment c = Segment(1);
   // Segment d = Segment(1);
   segments.push_back(a);
   segments.push_back(b);
-  segments.push_back(c);
+  // segments.push_back(c);
   // segments.push_back(d);
   inverseKinematicsSolver();
   getEndPoint(Segment::numSegments, true);
