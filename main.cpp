@@ -24,7 +24,7 @@ using namespace std;
 Segment * youngestSeg;
 Segment * rootSeg;
 float acceptableDistance      = .001;
-Vector3d goal                 = Vector3d(3, 0, 0);
+Vector3d goal                 = Vector3d(4, 0, 0);
 
 std::vector<Segment> segments = std::vector<Segment>();
 
@@ -266,11 +266,9 @@ void myDisplay() {
   changeColor(0.75f,1.0f,0.0f);
   Segment a = Segment(1);
   Segment b = Segment(1);
-  Segment c = Segment(1);
   // Segment d = Segment(1);
   segments.push_back(a);
   segments.push_back(b);
-  segments.push_back(c);
   // segments.push_back(d);
   inverseKinematicsSolver();
   getEndPoint(Segment::numSegments, true);
