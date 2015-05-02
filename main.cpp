@@ -13,6 +13,7 @@
 
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
+using Eigen::VectorXd;
 using Eigen::Affine3d;
 using Eigen::AngleAxisd;
 using Eigen::Translation3d;
@@ -20,8 +21,8 @@ using namespace std;
 
 Segment * youngestSeg;
 Segment * rootSeg;
-float acceptableDistance;
-Vector3d goal;
+float acceptableDistance      = .001;
+Vector3d goal                 = Vector3d(2, 2, 0);
 std::vector<Segment> segments = std::vector<Segment>();
 
 //*********************************************************
@@ -29,7 +30,7 @@ std::vector<Segment> segments = std::vector<Segment>();
 // Returns magnitude of two vectors.
 //*********************************************************
 float distanceBetween(Vector3d point1, Vector3d point2) {
-  return sqrt(pow(point1[0]-point2[0],2)+pow(point1[0]-point2[0],2)+pow(point1[0]-point2[0],2));
+  return sqrt(pow(point1[0]-point2[0],2)+pow(point1[1]-point2[1],2)+pow(point1[2]-point2[2],2));
 }
 
 //*********************************************************
@@ -41,9 +42,10 @@ float distanceBetween(Vector3d point1, Vector3d point2) {
 // http://stackoverflow.com/questions/10115354/inverse-kinematics-with-opengl-eigen3-unstable-jacobian-pseudoinverse
 //*********************************************************
 Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
-  Vector3d prevEndPoint;
-  prevEndPoint = Vector3d(0,0,0);
+  Vector3d prevEndPoint = Vector3d(0,0,0);
   if (draw) {
+    glPointSize(6);
+    glLineWidth(6);
     glBegin(GL_LINES);
   }
   Vector3d endPoint = Vector3d(0,0,0);
@@ -56,9 +58,18 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
     Translation3d translation = Translation3d(Vector3d(currentSegment.length, 0, 0));
     endPoint                  = ((Affine3d) xRot*yRot*zRot*translation)*endPoint;
     if (draw) {
+      if (i==0) {
+        glColor3f(1,0,0);
+      } else if(i==1) {
+        glColor3f(0,1,0);
+      } else if(i==2) {
+        glColor3f(0,0,1);
+      } else if(i==3) {
+        glColor3f(1,0,1);
+      }
+      cout << "distance: " << distanceBetween(prevEndPoint, endPoint) << endl;  
       glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
       glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
-      cout << endPoint << endl;
     }
     if (draw) {
       prevEndPoint = endPoint;
@@ -66,6 +77,7 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
   }
   if (draw) {
     glEnd();
+    glColor3f(1,1,1);
   }
   return endPoint;
 }
@@ -82,11 +94,14 @@ MatrixXd computeJacobian() {
   Vector3d yVec     = Vector3d(0,1,0);
   Vector3d zVec     = Vector3d(0,0,1);
   for (int i=0; i<Segment::numSegments; i++) {
-    Vector3d endPoint   = getEndPoint(i);
+    Vector3d endPoint   = getEndPoint(i+1);
     Vector3d difference = goal-endPoint;
-    Vector3d xCol       = xVec.cross(difference);
-    Vector3d yCol       = yVec.cross(difference);
-    Vector3d zCol       = zVec.cross(difference);
+    Vector3d xCol = Vector3d(0,0,0);
+    Vector3d yCol = Vector3d(0,0,0);
+    Vector3d zCol = Vector3d(0,0,0);
+    xCol       += xVec.cross(difference);
+    yCol       += yVec.cross(difference);
+    zCol       += zVec.cross(difference);
     jacobian.col(3*i+0) = xCol;
     jacobian.col(3*i+1) = yCol;
     jacobian.col(3*i+2) = zCol;
@@ -110,15 +125,30 @@ void inverseKinematicsSolver() {
   Vector3d endPoint     = getEndPoint();
   float distanceToGoal  = distanceBetween(endPoint, goal);
   double lambda         = 0.1;
-  while (distanceToGoal > acceptableDistance) {
-    MatrixXd jacobian       = computeJacobian();
-    MatrixXd pseudoJacobian = computePseudoInverse(jacobian);
+  float newDistanceToGoal;
+  MatrixXd jacobian;
+  MatrixXd pseudoJacobian;
+  VectorXd addToRots;
+  int numCalcsBeforeGiveUp = 10000;
+  int numCalcs = 0;
+  cout << "Distance: " << distanceToGoal << endl;
+  cout << "endPoint: " << endPoint << endl;
+  cout << "goal: " << goal << endl;
+  while (distanceToGoal > acceptableDistance && numCalcs < numCalcsBeforeGiveUp) {
+    numCalcs++;
+    cout << "Distance: " << distanceToGoal << endl;
+    jacobian       = computeJacobian();
+    pseudoJacobian = computePseudoInverse(jacobian);
     distanceToGoal          = distanceBetween(endPoint, goal);
-    Vector3d addToRots      = pseudoJacobian*lambda*distanceToGoal;
+    addToRots      = pseudoJacobian*lambda*(goal-endPoint);
     for (int i = 0; i<Segment::numSegments; i++) {
-      segments[i].rot += addToRots;
+      segments[i].rot[0] = fmod((segments[i].rot[0] + addToRots[i*3+0]), 360);
+      segments[i].rot[1] = fmod((segments[i].rot[1] + addToRots[i*3+1]), 360);
+      segments[i].rot[2] = fmod((segments[i].rot[2] + addToRots[i*3+2]), 360);
+      // cout << "segments[i[.rot: " << jacobian << endl;
     } 
-    float newDistanceToGoal = distanceBetween(endPoint, goal);
+    endPoint     = getEndPoint();
+    newDistanceToGoal = distanceBetween(endPoint, goal);
     if (distanceToGoal < newDistanceToGoal) {
       lambda*=.5;
     }
@@ -161,7 +191,7 @@ void myReshape(int w, int h) {
   // glOrtho(-1, 1 + (w-400)/200.0 , -1 -(h-400)/200.0, 1, 1, -1); // resize type = add
   // glOrtho(-w/400.0, w/400.0, -h/400.0, h/400.0, 1, -1); // resize type = center
 
-  glOrtho(-1, 1, -1, 1, 1, -1);    // resize type = stretch
+  glOrtho(-9, 9, -9, 9, 9, -9);    // resize type = stretch
 
   //------------------------------------------------------------
 }
@@ -190,7 +220,7 @@ void makeCircle(float rad, float horizOffset, float vertOffset, float distortY) 
 void myDisplay() {
 
   // Start drawing
-  getEndPoint(Segment::numSegments, true);
+  // getEndPoint(Segment::numSegments, true);
 
   glFlush();
   glutSwapBuffers();          // swap buffers (we earlier set double buffer)
@@ -207,11 +237,20 @@ void myDisplay() {
   glColor3f(0.75f,1.0f,0.0f);
   Segment a = Segment(1);
   Segment b = Segment(1);
-  Segment c = Segment(1);
+  // Segment c = Segment(1);
+  // Segment d = Segment(1);
   segments.push_back(a);
   segments.push_back(b);
-  segments.push_back(c);
+  // segments.push_back(c);
+  // segments.push_back(d);
+  inverseKinematicsSolver();
   getEndPoint(Segment::numSegments, true);
+  glBegin(GL_POINTS);
+  glPointSize(10);
+  glVertex3f(goal[0], goal[1], goal[2]);
+  glVertex3f(0, 0, 0);
+  glEnd();
+
 
   //-----------------------------------------------------------------------
 
@@ -223,11 +262,11 @@ void myDisplay() {
 // called by glut when there are no messages to handle
 //****************************************************
 void myFrameMove() {
-  //nothing here for now
-#ifdef _WIN32
-  Sleep(10);                                   //give ~10ms back to OS (so as not to waste the CPU)
-#endif
-  glutPostRedisplay(); // forces glut to call the display function (myDisplay())
+//   //nothing here for now
+// #ifdef _WIN32
+//   Sleep(10);                                   //give ~10ms back to OS (so as not to waste the CPU)
+// #endif
+//   glutPostRedisplay(); // forces glut to call the display function (myDisplay())
 }
 
 
