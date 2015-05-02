@@ -28,6 +28,10 @@ Segment * youngestSeg;
 Segment * rootSeg;
 float acceptableDistance      = .001;
 Vector3d goal                 = Vector3d(3, 0, 0);
+<<<<<<< HEAD
+=======
+
+>>>>>>> bd166ff63a7f9a586543569824a0280383ceb4f0
 std::vector<Segment> segments = std::vector<Segment>();
 
 //*********************************************************
@@ -56,7 +60,8 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
   if (i==1) changeColor(0,1,0);
   if (i==2) changeColor(0,0,1);
   if (i==3) changeColor(1,0,1);
-  cout << "distance: " << distanceBetween(prevEndPoint, endPoint) << endl;  
+  cout << "distance: " << distanceBetween(prevEndPoint, endPoint) << endl; 
+    cout << "pt1 " << prevEndPoint << " pt2 " << endPoint << endl; 
   glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
   glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
 }
@@ -169,6 +174,11 @@ void inverseKinematicsSolver() {
   MatrixXd jacobian;
   MatrixXd pseudoJacobian;
   VectorXd addToRots;
+  // cout << "Distance: "  << distanceToGoal << endl;
+  // cout << "endPoint: "  << endPoint       << endl;
+  // cout << "goal: "      << goal           << endl;
+  //cout << "hi" << endl;
+
 
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
     numCalcs++;
@@ -232,6 +242,10 @@ void initScene(){
   myReshape(viewport.w,viewport.h);
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> bd166ff63a7f9a586543569824a0280383ceb4f0
 void handle(unsigned char key, int x, int y) {
   switch (key) {
     case 32: //space
@@ -248,6 +262,9 @@ void myDisplay() {
 
   // Start drawing
   // getEndPoint(Segment::numSegments, true);
+
+  glFlush();
+  glutSwapBuffers();          // swap buffers (we earlier set double buffer)
 
   glClear(GL_COLOR_BUFFER_BIT);                // clear the color buffer (sets everything to black)
 
