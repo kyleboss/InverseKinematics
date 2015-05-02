@@ -11,8 +11,11 @@
 #include "Eigen/Dense"
 #include "Segment.h"
 
+#define PI 3.14159265
+
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
+using Eigen::VectorXd;
 using Eigen::Affine3d;
 using Eigen::AngleAxisd;
 using Eigen::Translation3d;
@@ -20,8 +23,8 @@ using namespace std;
 
 Segment * youngestSeg;
 Segment * rootSeg;
-float acceptableDistance;
-Vector3d goal;
+float acceptableDistance      = .001;
+Vector3d goal                 = Vector3d(2, 2, 0);
 std::vector<Segment> segments = std::vector<Segment>();
 
 //*********************************************************
@@ -29,7 +32,30 @@ std::vector<Segment> segments = std::vector<Segment>();
 // Returns magnitude of two vectors.
 //*********************************************************
 float distanceBetween(Vector3d point1, Vector3d point2) {
-  return sqrt(pow(point1[0]-point2[0],2)+pow(point1[0]-point2[0],2)+pow(point1[0]-point2[0],2));
+  return sqrt(pow(point1[0]-point2[0],2)+pow(point1[1]-point2[1],2)+pow(point1[2]-point2[2],2));
+}
+
+//*********************************************************
+// changeColor
+// Changes the color of the openGL outputs.
+//*********************************************************
+void changeColor(float r, float g, float b) {
+  glColor3f(r,g,b);
+}
+
+//*********************************************************
+// alterColorForDebugging
+// Helper function to better understand the IK Solver from
+// within the getEndPoint function.
+//*********************************************************
+void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
+  if (i==0) changeColor(1,0,0);
+  if (i==1) changeColor(0,1,0);
+  if (i==2) changeColor(0,0,1);
+  if (i==3) changeColor(1,0,1);
+  cout << "distance: " << distanceBetween(prevEndPoint, endPoint) << endl;  
+  glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
+  glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
 }
 
 //*********************************************************
@@ -41,13 +67,22 @@ float distanceBetween(Vector3d point1, Vector3d point2) {
 // http://stackoverflow.com/questions/10115354/inverse-kinematics-with-opengl-eigen3-unstable-jacobian-pseudoinverse
 //*********************************************************
 Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
-  Vector3d prevEndPoint;
-  prevEndPoint = Vector3d(0,0,0);
+  Vector3d prevEndPoint, rad, endPoint = Vector3d(0,0,0);
+  AngleAxisd xRot, yRot, zRot;
+  Segment currentSegment;
+  Translation3d translation;
+
   if (draw) {
+<<<<<<< HEAD
+=======
+    glPointSize(6);
+    glLineWidth(6);
+>>>>>>> origin/master
     glBegin(GL_LINES);
   }
-  Vector3d endPoint = Vector3d(0,0,0);
+
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
+<<<<<<< HEAD
     Segment currentSegment    = segments[i];
     Vector3d rad              = M_PI*currentSegment.rot/180;
     AngleAxisd xRot           = AngleAxisd(rad[0], Vector3d(-1, 0, 0));
@@ -68,13 +103,27 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
       glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
       cout << endPoint << endl;
     }
+=======
+    currentSegment  = segments[i];
+    rad             = M_PI*currentSegment.rot/180;
+    xRot            = AngleAxisd(rad[0], Vector3d(-1, 0, 0));
+    yRot            = AngleAxisd(rad[1], Vector3d(0, -1, 0));
+    zRot            = AngleAxisd(rad[2], Vector3d(0, 0, -1));
+    translation     = Translation3d(Vector3d(currentSegment.length, 0, 0));
+    endPoint        = ((Affine3d) xRot*yRot*zRot*translation)*endPoint;
+
+>>>>>>> origin/master
     if (draw) {
+      alterColorForDebugging(i, prevEndPoint, endPoint);
       prevEndPoint = endPoint;
     }
   }
+
   if (draw) {
     glEnd();
+    changeColor(1,1,1);
   }
+
   return endPoint;
 }
 
@@ -89,16 +138,24 @@ MatrixXd computeJacobian() {
   Vector3d xVec     = Vector3d(1,0,0);
   Vector3d yVec     = Vector3d(0,1,0);
   Vector3d zVec     = Vector3d(0,0,1);
+  Vector3d xCol, yCol, zCol, endPoint, difference = Vector3d(0,0,0);
+
   for (int i=0; i<Segment::numSegments; i++) {
-    Vector3d endPoint   = getEndPoint(i);
-    Vector3d difference = goal-endPoint;
-    Vector3d xCol       = xVec.cross(difference);
-    Vector3d yCol       = yVec.cross(difference);
-    Vector3d zCol       = zVec.cross(difference);
+    endPoint    = getEndPoint(i+1);
+    difference  = goal-endPoint;
+    xCol        = Vector3d(0,0,0);
+    yCol        = Vector3d(0,0,0);
+    zCol        = Vector3d(0,0,0);
+
+    xCol       += xVec.cross(difference);
+    yCol       += yVec.cross(difference);
+    zCol       += zVec.cross(difference);
+
     jacobian.col(3*i+0) = xCol;
     jacobian.col(3*i+1) = yCol;
     jacobian.col(3*i+2) = zCol;
   }
+
   return jacobian;
 }
 
@@ -110,32 +167,49 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix) {
   return originalMatrix.transpose()*((originalMatrix*originalMatrix.transpose()).inverse());
 }
 
+//*********************************************************
+// updateSegmentRotations
+// Updates a segment's degree of rotation given a vector
+// of rotational degree values.
+//*********************************************************
+void updateSegmentRotations(VectorXd addToRots) {
+  for (int i = 0; i<Segment::numSegments; i++) {
+    segments[i].rot[0] = fmod((segments[i].rot[0] + addToRots[i*3+0]), 360);
+    segments[i].rot[1] = fmod((segments[i].rot[1] + addToRots[i*3+1]), 360);
+    segments[i].rot[2] = fmod((segments[i].rot[2] + addToRots[i*3+2]), 360);
+  } 
+}
+
 //********************************************************
 // inverseKinematicsSolver
 // Solves the Inverse Kinematics Problem.
 //*********************************************************
 void inverseKinematicsSolver() {
-  Vector3d endPoint     = getEndPoint();
-  float distanceToGoal  = distanceBetween(endPoint, goal);
-  double lambda         = 0.1;
-  while (distanceToGoal > acceptableDistance) {
-    MatrixXd jacobian       = computeJacobian();
-    MatrixXd pseudoJacobian = computePseudoInverse(jacobian);
-    distanceToGoal          = distanceBetween(endPoint, goal);
-    Vector3d addToRots      = pseudoJacobian*lambda*distanceToGoal;
-    for (int i = 0; i<Segment::numSegments; i++) {
-      segments[i].rot += addToRots;
-    } 
-    float newDistanceToGoal = distanceBetween(endPoint, goal);
-    if (distanceToGoal < newDistanceToGoal) {
-      lambda*=.5;
-    }
+  Vector3d endPoint         = getEndPoint();
+  float distanceToGoal      = distanceBetween(endPoint, goal);
+  double lambda             = 0.1;
+  int numCalcs              = 0;
+  float newDistanceToGoal;
+  MatrixXd jacobian;
+  MatrixXd pseudoJacobian;
+  VectorXd addToRots;
+  // cout << "Distance: "  << distanceToGoal << endl;
+  // cout << "endPoint: "  << endPoint       << endl;
+  // cout << "goal: "      << goal           << endl;
+
+  while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
+    numCalcs++;
+    jacobian       = computeJacobian();
+    pseudoJacobian = computePseudoInverse(jacobian);
+    distanceToGoal = distanceBetween(endPoint, goal);
+    addToRots      = pseudoJacobian*lambda*(goal-endPoint);
+    updateSegmentRotations(addToRots);
+    endPoint          = getEndPoint();
+    newDistanceToGoal = distanceBetween(endPoint, goal);
+    if (distanceToGoal < newDistanceToGoal) lambda*=.5;
   }
 }
 
-#define PI 3.14159265
-
-using namespace std;
 
 //****************************************************
 // Some Classes
@@ -169,7 +243,7 @@ void myReshape(int w, int h) {
   // glOrtho(-1, 1 + (w-400)/200.0 , -1 -(h-400)/200.0, 1, 1, -1); // resize type = add
   // glOrtho(-w/400.0, w/400.0, -h/400.0, h/400.0, 1, -1); // resize type = center
 
-  glOrtho(-1, 1, -1, 1, 1, -1);    // resize type = stretch
+  glOrtho(-9, 9, -9, 9, 9, -9);    // resize type = stretch
 
   //------------------------------------------------------------
 }
@@ -185,10 +259,23 @@ void initScene(){
 }
 
 
+<<<<<<< HEAD
+=======
+void handle(unsigned char key, int x, int y) {
+  switch (key) {
+    case 32: //space
+      exit(0);
+      break;
+  }
+  glutPostRedisplay();
+}
+
+>>>>>>> origin/master
 //***************************************************
 // function that does the actual drawing
 //***************************************************
 void myDisplay() {
+<<<<<<< HEAD
 
   // Start drawing
   getEndPoint(Segment::numSegments, true);
@@ -197,6 +284,8 @@ void myDisplay() {
   glutSwapBuffers();          // swap buffers (we earlier set double buffer)
 
 
+=======
+>>>>>>> origin/master
 
   glClear(GL_COLOR_BUFFER_BIT);                // clear the color buffer (sets everything to black)
 
@@ -205,14 +294,30 @@ void myDisplay() {
 
   //----------------------- code to draw objects --------------------------
 
+<<<<<<< HEAD
   glColor3f(0.75f,1.0f,0.0f);
   Segment a = Segment(0.1);
   Segment b = Segment(0.2);
   Segment c = Segment(0.3);
+=======
+  changeColor(0.75f,1.0f,0.0f);
+  Segment a = Segment(1);
+  Segment b = Segment(1);
+  // Segment c = Segment(1);
+  // Segment d = Segment(1);
+>>>>>>> origin/master
   segments.push_back(a);
   segments.push_back(b);
-  segments.push_back(c);
+  // segments.push_back(c);
+  // segments.push_back(d);
+  inverseKinematicsSolver();
   getEndPoint(Segment::numSegments, true);
+  glBegin(GL_POINTS);
+  glPointSize(10);
+  glVertex3f(goal[0], goal[1], goal[2]);
+  glVertex3f(0, 0, 0);
+  glEnd();
+
 
   //-----------------------------------------------------------------------
 
@@ -220,6 +325,7 @@ void myDisplay() {
   glutSwapBuffers();                           // swap buffers (we earlier set double buffer)
 }
 
+<<<<<<< HEAD
 void handle(unsigned char key, int x, int y) {
   switch (key) {
     case 32: //space
@@ -227,6 +333,17 @@ void handle(unsigned char key, int x, int y) {
       break;
   }
   glutPostRedisplay();
+=======
+//****************************************************
+// called by glut when there are no messages to handle
+//****************************************************
+void myFrameMove() {
+//   //nothing here for now
+// #ifdef _WIN32
+//   Sleep(10);                                   //give ~10ms back to OS (so as not to waste the CPU)
+// #endif
+//   glutPostRedisplay(); // forces glut to call the display function (myDisplay())
+>>>>>>> origin/master
 }
 
 

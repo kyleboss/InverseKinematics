@@ -7,6 +7,7 @@ class Segment {
         rot = Vector3d(0,0,0);
         numSegments += 1;
     }
+    Segment() {}
     Vector3d rot;
     float length;
     static int numSegments;
