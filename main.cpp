@@ -17,6 +17,7 @@ using Eigen::Affine3d;
 using Eigen::AngleAxisd;
 using Eigen::Translation3d;
 using namespace std;
+
 Segment * youngestSeg;
 Segment * rootSeg;
 float acceptableDistance;
@@ -43,8 +44,7 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
   Vector3d prevEndPoint;
   prevEndPoint = Vector3d(0,0,0);
   if (draw) {
-    glColor3f(1,1,1);
-    glBegin(GL_POINTS);
+    glBegin(GL_LINES);
   }
   Vector3d endPoint = Vector3d(0,0,0);
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
@@ -56,10 +56,17 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
     Translation3d translation = Translation3d(Vector3d(currentSegment.length, 0, 0));
     endPoint                  = ((Affine3d) xRot*yRot*zRot*translation)*endPoint;
     if (draw) {
-      glVertex3f(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
-      glVertex3f(endPoint[0],endPoint[1],endPoint[2]);
-      cout << "for segment of len " << currentSegment.length << " prev is " 
-           << prevEndPoint << " and curr is " << endPoint << endl;
+      if (i == 1) {
+        glColor3f(1.0,0.0,0.0);
+        cout << "second";        
+      }
+      if (i == 2) {
+        glColor3f(0.0,1.0,0.0);      
+        cout << "third";        
+      }
+      glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
+      glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
+      cout << endPoint << endl;
     }
     if (draw) {
       prevEndPoint = endPoint;
@@ -177,39 +184,17 @@ void initScene(){
   myReshape(viewport.w,viewport.h);
 }
 
-void makeCircle(float rad, float horizOffset, float vertOffset, float distortY) {
-  const  float circ = 2*PI;
-  for (float angle = 0; angle < circ; angle += 0.01) {
-    glVertex3f(rad*cos(angle)+horizOffset, distortY*rad*sin(angle)+vertOffset, 0.0f);
-  }
-}
-
 
 //***************************************************
 // function that does the actual drawing
 //***************************************************
 void myDisplay() {
 
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  glOrtho(-3.5, 3.5, -3.5, 3.5, 5, -5);
- 
   // Start drawing
   getEndPoint(Segment::numSegments, true);
 
   glFlush();
   glutSwapBuffers();          // swap buffers (we earlier set double buffer)
-
-
-void handle(unsigned char key, int x, int y) {
-  switch (key) {
-    case 32: //space
-      exit(0);
-      break;
-  }
-  glutPostRedisplay();
-}
 
 
 
@@ -221,9 +206,9 @@ void handle(unsigned char key, int x, int y) {
   //----------------------- code to draw objects --------------------------
 
   glColor3f(0.75f,1.0f,0.0f);
-  Segment a = Segment(1);
-  Segment b = Segment(4);
-  Segment c = Segment(2);
+  Segment a = Segment(0.1);
+  Segment b = Segment(0.2);
+  Segment c = Segment(0.3);
   segments.push_back(a);
   segments.push_back(b);
   segments.push_back(c);
@@ -235,15 +220,13 @@ void handle(unsigned char key, int x, int y) {
   glutSwapBuffers();                           // swap buffers (we earlier set double buffer)
 }
 
-//****************************************************
-// called by glut when there are no messages to handle
-//****************************************************
-void myFrameMove() {
-  //nothing here for now
-#ifdef _WIN32
-  Sleep(10);                                   //give ~10ms back to OS (so as not to waste the CPU)
-#endif
-  glutPostRedisplay(); // forces glut to call the display function (myDisplay())
+void handle(unsigned char key, int x, int y) {
+  switch (key) {
+    case 32: //space
+      exit(0);
+      break;
+  }
+  glutPostRedisplay();
 }
 
 
@@ -258,21 +241,20 @@ int main(int argc, char *argv[]) {
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 
   // Initalize theviewport size
-  viewport.w = 400;
-  viewport.h = 400;
+  viewport.w = 700;
+  viewport.h = 700;
 
   //The size and position of the window
   glutInitWindowSize(viewport.w, viewport.h);
   glutInitWindowPosition(0, 0);
   glutCreateWindow("CS184!");
 
-  initScene();              // quick function to set up scene
-  glutDisplayFunc(myDisplay);       // function to run when its time to draw something
-  glutReshapeFunc(myReshape);       // function to run when the window gets resized
+  initScene();                                 // quick function to set up scene
   glutKeyboardFunc(handle); //exit on space
-  glutIdleFunc(myFrameMove);                   // function to run when not handling any other task
 
-  glutMainLoop();             // infinite loop that will keep drawing and resizing
- 
+  glutDisplayFunc(myDisplay);                  // function to run when its time to draw something
+  glutReshapeFunc(myReshape);                  // function to run when the window gets resized
+  glutMainLoop();                              // infinite loop that will keep drawing and resizing and whatever else
+
   return 0;
 }
