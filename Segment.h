@@ -9,8 +9,9 @@ class Segment {
     }
     Segment() {}
     Vector3d rot;
+    Vector3d start;
+    Vector3d end;
     float length;
     static int numSegments;
-    static std::vector<Segment> * segments;
 };
 int Segment::numSegments = 0;
