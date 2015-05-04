@@ -9,7 +9,7 @@ class Segment {
     }
     Segment() {}
     Vector3d rot;
-    Vector3d start;
+    Vector3d jointLoc; //also the start drawing location
     Vector3d end;
     float length;
     static int numSegments;

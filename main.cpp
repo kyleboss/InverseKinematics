@@ -9,7 +9,6 @@
 #include <time.h>
 #include <math.h>
 #include "Eigen/Dense"
-#include "Eigen/Geometry"
 #include "Segment.h"
 
 #define PI 3.14159265
@@ -23,16 +22,14 @@ using Eigen::VectorXd;
 using Eigen::Affine3d;
 using Eigen::AngleAxisd;
 using Eigen::Translation3d;
-using Eigen::Quaterniond;
 using namespace std;
 
 Segment * youngestSeg;
 Segment * rootSeg;
-float acceptableDistance      = .01;
+float acceptableDistance      = .001;
 Vector3d goal                 = Vector3d(1, 1, 0);
-bool draw = false;
 
-std::vector<Segment> segments = std::vector<Segment>();
+std::vector<Segment *> segments = std::vector<Segment *>();
 
 //*********************************************************
 // distanceBetween
@@ -60,9 +57,8 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
   if (i==1) changeColor(0,1,0);
   if (i==2) changeColor(0,0,1);
   if (i==3) changeColor(1,0,1);
-  cout << "DRAWING!" << endl;
   cout << "distance: " << distanceBetween(prevEndPoint, endPoint) << endl; 
-  cout << "pt1 " << prevEndPoint << " pt2 " << endPoint << endl; 
+    cout << "pt1 " << prevEndPoint << " pt2 " << endPoint << endl; 
   glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
   glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
 }
@@ -73,35 +69,42 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
 // is index-amount of hops away from the root. If no index
 // is provided, it will return the end-point of the segment
 // farthest away from the root. 
-////*********************************************************
-Vector3d getEndPoint(int i) {
-  Vector3d rad;
-  cout << "IN GET END POINT " << endl;
+// http://stackoverflow.com/questions/10115354/inverse-kinematics-with-opengl-eigen3-unstable-jacobian-pseudoinverse
+//*********************************************************
+Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
+  Vector3d prevEndPoint, rad, endPoint;
   AngleAxisd xRot, yRot, zRot;
-  Segment currentSegment = segments[i];
+  Segment * currentSegment;
   Translation3d translation;
-  cout << "THE CURRENT SEGMENT HAS LEN " << currentSegment.length << endl;
-  if (i > 0) {
-    currentSegment.start = segments[i-1].end;
-  } //start points are updated
-  Vector3d endPoint = currentSegment.end; //endpoint initialized to what it was before
-  cout << "INITIAL START POINT IS " << currentSegment.start << endl;
-  cout << "INITIAL END POINT IS " << currentSegment.end << endl;
+  prevEndPoint = Vector3d(0,0,0);
+  endPoint = Vector3d(0,0,0);
 
-  rad             = M_PI*currentSegment.rot/180;
-  cout << "THE ANGLES ARE " << rad << endl;
-  xRot            = AngleAxisd(rad[0], Vector3d::UnitX());
-  yRot            = AngleAxisd(rad[1], Vector3d::UnitY());
-  zRot            = AngleAxisd(rad[2], Vector3d::UnitZ());
-  Quaterniond xq = Quaterniond(xRot);
-  Quaterniond yq = Quaterniond(yRot);
-  Quaterniond zq = Quaterniond(zRot); //not sure if needed?
-  
-  translation     = Translation3d(Vector3d(currentSegment.length, 0, 0));
-  endPoint        = ((Affine3d) xRot*yRot*zRot*translation)*currentSegment.start;
-  cout << "NEW END POINT IS " << endPoint << endl;
-  currentSegment.end = endPoint;
-  
+  if (draw) {
+    glPointSize(6);
+    glLineWidth(6);
+    glBegin(GL_LINES);
+  }
+
+  for (int i = 0; i<index && i<Segment::numSegments; i++) {
+    currentSegment  = segments[i];
+    rad             = M_PI*currentSegment->rot/180;
+    xRot            = AngleAxisd(rad[0], Vector3d(-1, 0, 0));
+    yRot            = AngleAxisd(rad[1], Vector3d(0, -1, 0));
+    zRot            = AngleAxisd(rad[2], Vector3d(0, 0, -1));
+    translation     = Translation3d(Vector3d(currentSegment->length, 0, 0));
+    endPoint        = ((Affine3d) xRot*yRot*zRot*translation)*prevEndPoint;
+    currentSegment->jointLoc = prevEndPoint;
+    currentSegment->end = endPoint;
+    cout << "FOR a segment of len " << currentSegment->length << ", joint is at " << currentSegment->jointLoc << " and end is " << endPoint << endl;
+    if (draw) alterColorForDebugging(i, currentSegment->jointLoc, currentSegment->end);
+    prevEndPoint = endPoint;
+  }
+
+  if (draw) {
+    glEnd();
+    changeColor(1,1,1);
+  }
+
   return endPoint;
 }
 
@@ -116,12 +119,15 @@ MatrixXd computeJacobian() {
   Vector3d xVec     = Vector3d(1,0,0);
   Vector3d yVec     = Vector3d(0,1,0);
   Vector3d zVec     = Vector3d(0,0,1);
-  Vector3d xCol, yCol, zCol, endPoint, difference;
-
+  Vector3d xCol, yCol, zCol, joint, difference;
+  Vector3d endEffector = segments[Segment::numSegments-1]->end;
+  cout << "endeffect" << endEffector << endl;
+  //need to get into world coordinate space
   for (int i=0; i<Segment::numSegments; i++) {
-    endPoint    = getEndPoint(i);
-    cout << "ENDPOINT IN JACOBIAN " << endPoint << endl;
-    difference  = goal-endPoint;
+    Segment * currentSegment = segments[i];
+    joint = currentSegment->jointLoc;
+    cout << "joint location of curr " << joint;
+    difference  = endEffector-joint; //difference = end effector - curr joint
     xCol        = Vector3d(0,0,0);
     yCol        = Vector3d(0,0,0);
     zCol        = Vector3d(0,0,0);
@@ -154,9 +160,9 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 //*********************************************************
 void updateSegmentRotations(VectorXd addToRots) {
   for (int i = 0; i<Segment::numSegments; i++) {
-    segments[i].rot[0] = fmod((segments[i].rot[0] + addToRots[i*3+0]), 360);
-    segments[i].rot[1] = fmod((segments[i].rot[1] + addToRots[i*3+1]), 360);
-    segments[i].rot[2] = fmod((segments[i].rot[2] + addToRots[i*3+2]), 360);
+    segments[i]->rot[0] = fmod((segments[i]->rot[0] + addToRots[i*3+0]), 360);
+    segments[i]->rot[1] = fmod((segments[i]->rot[1] + addToRots[i*3+1]), 360);
+    segments[i]->rot[2] = fmod((segments[i]->rot[2] + addToRots[i*3+2]), 360);
   } 
 }
 
@@ -165,12 +171,8 @@ void updateSegmentRotations(VectorXd addToRots) {
 // Solves the Inverse Kinematics Problem.
 //*********************************************************
 void inverseKinematicsSolver() {
-  double firstEndPoint;
-  for (int i = 0; i<Segment::numSegments; i++) {
-    firstEndPoint += segments[i].length;
-  } 
-  Vector3d endPoint = Vector3d(firstEndPoint, 0.0, 0.0);
-  cout << "FIRST END POINT IS!!! " << endPoint << endl;
+  Vector3d endPoint         = getEndPoint();
+  cout << "ENDPOINT CALC IN IK OF VAL " << endPoint << endl;
   float distanceToGoal      = distanceBetween(endPoint, goal);
   double lambda             = 0.1;
   int numCalcs              = 0;
@@ -187,37 +189,15 @@ void inverseKinematicsSolver() {
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
     numCalcs++;
     jacobian       = computeJacobian();
-    cout << "Jacobian: " << jacobian << endl;
+    cout << "Jacobian: \n" << jacobian << endl;    
     distanceToGoal = distanceBetween(endPoint, goal);
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
     cout << "After psuedo-inversing: " << pseudoJacobian << endl;
     addToRots      = pseudoJacobian*lambda;
     updateSegmentRotations(addToRots);
-  //   cout << "new rotations are " << endl;
-  // for (int i = 0; i<Segment::numSegments; i++) {
-  //   cout << segments[i].rot << endl;
-  // }
-    for (int i = 0; i<Segment::numSegments; i++) {
-        endPoint = getEndPoint(i);
-    } 
-    cout << "Newest updated endpoint is " << endPoint << endl;
+    endPoint          = getEndPoint();
     newDistanceToGoal = distanceBetween(endPoint, goal);
     if (distanceToGoal < newDistanceToGoal) lambda*=.5;
-
-    if (draw) {
-      glPointSize(6);
-      glLineWidth(6);
-      glBegin(GL_LINES);
-      for (int i = 0; i<Segment::numSegments; i++) {
-        Vector3d drawstart = segments[i].start;
-        Vector3d drawend = segments[i].end;
-        alterColorForDebugging(i, drawstart, drawend);
-      } 
-      glEnd();
-      changeColor(1,1,1);
-      glutPostRedisplay();
-    }
-
   }
 }
 
@@ -297,26 +277,16 @@ void myDisplay() {
   //----------------------- code to draw objects --------------------------
 
   changeColor(0.75f,1.0f,0.0f);
-  //MANUALLY SET STARTS AND ENDS INITIALLY
-  Segment a = Segment(1);
-  Segment b = Segment(2);
-  Segment c = Segment(3);
-  Segment d = Segment(4);
-  a.start = Vector3d(0,0,0);
-  a.end = Vector3d(a.length,0,0);
-  b.start = a.end;
-  b.end = b.start + Vector3d(b.length,0,0);
-  c.start = b.end;
-  c.end = c.start + Vector3d(c.length,0,0);
-  d.start = c.end;
-  d.end = d.start + Vector3d(d.length,0,0);
+  Segment * a = new Segment(1);
+  Segment * b = new Segment(2);
+  Segment * c = new Segment(3);
+  Segment * d = new Segment(4);
   segments.push_back(a);
   segments.push_back(b);
   segments.push_back(c);
   segments.push_back(d);
-
-  draw = true; //CHANGE THIS
   inverseKinematicsSolver();
+  getEndPoint(Segment::numSegments, true);
   glBegin(GL_POINTS);
   glPointSize(10);
   glVertex3f(goal[0], goal[1], goal[2]);
