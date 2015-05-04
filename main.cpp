@@ -9,6 +9,7 @@
 #include <time.h>
 #include <math.h>
 #include "Eigen/Dense"
+#include "Eigen/SVD"
 #include "Segment.h"
 
 #define PI 3.14159265
@@ -27,7 +28,7 @@ using namespace std;
 Segment * youngestSeg;
 Segment * rootSeg;
 float acceptableDistance      = .001;
-Vector3d goal                 = Vector3d(1, 1, 0);
+Vector3d goal                 = Vector3d(0, 1, 0);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -149,8 +150,18 @@ MatrixXd computeJacobian() {
 // Computes the pseudoinverse of a given matrix.
 //*********************************************************
 MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d endPoint) {
-    JacobiSVD<MatrixXd> svd (originalMatrix,ComputeThinU | ComputeThinV);
-    return svd.solve(goal-endPoint);
+    JacobiSVD<MatrixXd> svd(originalMatrix,ComputeThinU | ComputeThinV);
+    //cout << "singular values are " << svd.singularValues() << endl;
+    MatrixXd sigma_inverse = MatrixXd::Zero(3,3);
+    Vector3d sigma = svd.singularValues();
+    for (int i = 0; i < sigma.size(); i++) { //manually insert the values
+      if (sigma(i) > 1e-6) sigma_inverse(i,i) = 1/sigma(i);
+    }
+    //cout << "sigma_inverse is \n" << sigma_inverse << endl;
+
+    MatrixXd inversejacobian = svd.matrixV() * sigma_inverse * svd.matrixU().transpose();
+    
+    return inversejacobian;
 }
 
 //*********************************************************
@@ -174,7 +185,7 @@ void inverseKinematicsSolver() {
   Vector3d endPoint         = getEndPoint();
   cout << "ENDPOINT CALC IN IK OF VAL " << endPoint << endl;
   float distanceToGoal      = distanceBetween(endPoint, goal);
-  double lambda             = 0.1;
+  double lambda             = 1;
   int numCalcs              = 0;
   float newDistanceToGoal;
   MatrixXd jacobian;
@@ -193,9 +204,10 @@ void inverseKinematicsSolver() {
     distanceToGoal = distanceBetween(endPoint, goal);
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
     cout << "After psuedo-inversing: " << pseudoJacobian << endl;
-    addToRots      = pseudoJacobian*lambda;
+    addToRots      = pseudoJacobian*lambda*(goal - endPoint);
     updateSegmentRotations(addToRots);
-    endPoint          = getEndPoint();
+    cout << "the rotations added are \n" << addToRots << endl;
+    endPoint          = getEndPoint(Segment::numSegments,true);
     newDistanceToGoal = distanceBetween(endPoint, goal);
     if (distanceToGoal < newDistanceToGoal) lambda*=.5;
   }
@@ -278,15 +290,15 @@ void myDisplay() {
 
   changeColor(0.75f,1.0f,0.0f);
   Segment * a = new Segment(1);
-  Segment * b = new Segment(2);
-  Segment * c = new Segment(3);
-  Segment * d = new Segment(4);
+  // Segment * b = new Segment(2);
+  // Segment * c = new Segment(3);
+  // Segment * d = new Segment(4);
   segments.push_back(a);
-  segments.push_back(b);
-  segments.push_back(c);
-  segments.push_back(d);
+  // segments.push_back(b);
+  // segments.push_back(c);
+  // segments.push_back(d);
   inverseKinematicsSolver();
-  getEndPoint(Segment::numSegments, true);
+  //getEndPoint(Segment::numSegments, true);
   glBegin(GL_POINTS);
   glPointSize(10);
   glVertex3f(goal[0], goal[1], goal[2]);
