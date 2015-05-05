@@ -167,13 +167,14 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 //*********************************************************
 // updateSegmentRotations
 // Updates a segment's degree of rotation given a vector
-// of rotational degree values.
+// of rotational degree values. addToRots - 1x3n
+// rotations are in degreeees
 //*********************************************************
 void updateSegmentRotations(VectorXd addToRots) {
-  for (int i = 0; i<Segment::numSegments; i++) {
-    segments[i]->rot[0] = fmod((segments[i]->rot[0] + addToRots[i*3+0]), 360);
-    segments[i]->rot[1] = fmod((segments[i]->rot[1] + addToRots[i*3+1]), 360);
-    segments[i]->rot[2] = fmod((segments[i]->rot[2] + addToRots[i*3+2]), 360);
+  for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
+    segments[i]->rot[0] = fmod(addToRots[i*3+0], 360);
+    segments[i]->rot[1] = fmod(addToRots[i*3+1], 360);
+    segments[i]->rot[2] = fmod(addToRots[i*3+2], 360);
   } 
 }
 
@@ -203,11 +204,12 @@ void inverseKinematicsSolver() {
     cout << "Jacobian: \n" << jacobian << endl;    
     distanceToGoal = distanceBetween(endPoint, goal);
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
-    cout << "After psuedo-inversing: " << pseudoJacobian << endl;
+    cout << "After psuedo-inversing: \n" << pseudoJacobian << endl;
     addToRots      = pseudoJacobian*lambda*(goal - endPoint);
     updateSegmentRotations(addToRots);
     cout << "the rotations added are \n" << addToRots << endl;
     endPoint          = getEndPoint(Segment::numSegments,true);
+    cout << "NEW UPDATED ENDPOINT IS \n" << endPoint << endl;
     newDistanceToGoal = distanceBetween(endPoint, goal);
     if (distanceToGoal < newDistanceToGoal) lambda*=.5;
   }
