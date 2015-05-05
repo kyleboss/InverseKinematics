@@ -26,12 +26,10 @@ using namespace std;
 
 Segment * youngestSeg;
 Segment * rootSeg;
+int timeCount = 0;
 float acceptableDistance      = .001;
-Vector3d goal                 = Vector3d(3, 0, 0);
-<<<<<<< HEAD
-=======
+Vector3d goal                 = Vector3d(0, 1, 0);
 
->>>>>>> bd166ff63a7f9a586543569824a0280383ceb4f0
 std::vector<Segment> segments = std::vector<Segment>();
 
 //*********************************************************
@@ -60,8 +58,6 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
   if (i==1) changeColor(0,1,0);
   if (i==2) changeColor(0,0,1);
   if (i==3) changeColor(1,0,1);
-  cout << "distance: " << distanceBetween(prevEndPoint, endPoint) << endl; 
-    cout << "pt1 " << prevEndPoint << " pt2 " << endPoint << endl; 
   glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
   glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
 }
@@ -80,6 +76,7 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
   Segment currentSegment;
   Translation3d translation;
   prevEndPoint = Vector3d(0,0,0);
+  endPoint = Vector3d(0,0,0);
 
   if (draw) {
     glPointSize(6);
@@ -94,7 +91,7 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
     yRot            = AngleAxisd(rad[1], Vector3d(0, -1, 0));
     zRot            = AngleAxisd(rad[2], Vector3d(0, 0, -1));
     translation     = Translation3d(Vector3d(currentSegment.length, 0, 0));
-    endPoint        = ((Affine3d) xRot*yRot*zRot*translation)*prevEndPoint;
+    endPoint        = ((Affine3d) xRot*yRot*zRot*translation)*endPoint;
     if (draw) alterColorForDebugging(i, prevEndPoint, endPoint);
     prevEndPoint = endPoint;
   }
@@ -174,16 +171,11 @@ void inverseKinematicsSolver() {
   MatrixXd jacobian;
   MatrixXd pseudoJacobian;
   VectorXd addToRots;
-  // cout << "Distance: "  << distanceToGoal << endl;
-  // cout << "endPoint: "  << endPoint       << endl;
-  // cout << "goal: "      << goal           << endl;
-  //cout << "hi" << endl;
 
 
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
     numCalcs++;
     jacobian       = computeJacobian();
-    cout << "After psuedo-inversing: " << pseudoJacobian << endl;
     distanceToGoal = distanceBetween(endPoint, goal);
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
     addToRots      = pseudoJacobian*lambda;
@@ -213,39 +205,38 @@ Viewport    viewport;
 // reshape viewport if the window is resized
 //****************************************************
 void myReshape(int w, int h) {
-  viewport.w = w;
-  viewport.h = h;
-
-  glViewport(0,0,viewport.w,viewport.h);// sets the rectangle that will be the window
+  glViewport(0, 0, w, h);
   glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();                // loading the identity matrix for the screen
-
-  //----------- setting the projection -------------------------
-  // glOrtho sets left, right, bottom, top, zNear, zFar of the chord system
-
-
-  // glOrtho(-1, 1 + (w-400)/200.0 , -1 -(h-400)/200.0, 1, 1, -1); // resize type = add
-  // glOrtho(-w/400.0, w/400.0, -h/400.0, h/400.0, 1, -1); // resize type = center
-
-  glOrtho(-9, 9, -9, 9, 9, -9);    // resize type = stretch
-
-  //------------------------------------------------------------
+  glLoadIdentity();
+  gluPerspective(40.0, GLfloat(w) / GLfloat(h), 1.0, 150.0);
+  glMatrixMode(GL_MODELVIEW);
 }
-
 
 //****************************************************
 // sets the window up
 //****************************************************
 void initScene(){
+  GLfloat WHITE[] = {1.0,1.0,1.0};
+  glEnable(GL_DEPTH_TEST);
+  glLightfv(GL_LIGHT0, GL_DIFFUSE, WHITE);
+  glLightfv(GL_LIGHT0, GL_SPECULAR, WHITE);
+  glMaterialfv(GL_FRONT, GL_SPECULAR, WHITE);
+  glMaterialf(GL_FRONT, GL_SHININESS, 30);
+  glEnable(GL_LIGHTING);
+  glEnable(GL_LIGHT0);
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to black, fully transparent
-
+  changeColor(0.75f,1.0f,0.0f);
+  Segment a = Segment(1);
+  // Segment b = Segment(1);
+  // Segment c = Segment(1);
+  // Segment d = Segment(1);
+  segments.push_back(a);
+  // segments.push_back(b);
+  // segments.push_back(c);
+  // segments.push_back(d);
   myReshape(viewport.w,viewport.h);
 }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> bd166ff63a7f9a586543569824a0280383ceb4f0
 void handle(unsigned char key, int x, int y) {
   switch (key) {
     case 32: //space
@@ -260,36 +251,56 @@ void handle(unsigned char key, int x, int y) {
 //***************************************************
 void myDisplay() {
 
-  // Start drawing
-  // getEndPoint(Segment::numSegments, true);
-
-  glFlush();
-  glutSwapBuffers();          // swap buffers (we earlier set double buffer)
-
-  glClear(GL_COLOR_BUFFER_BIT);                // clear the color buffer (sets everything to black)
-
-  glMatrixMode(GL_MODELVIEW);                  // indicate we are specifying camera transformations
-  glLoadIdentity();                            // make sure transformation is "zero'd"
 
   //----------------------- code to draw objects --------------------------
-
-  changeColor(0.75f,1.0f,0.0f);
-  Segment a = Segment(1);
-  Segment b = Segment(1);
-  // Segment c = Segment(1);
-  // Segment d = Segment(1);
-  segments.push_back(a);
-  segments.push_back(b);
-  // segments.push_back(c);
-  // segments.push_back(d);
+  // https://www.opengl.org/discussion_boards/showthread.php/164180-Draw-a-checker-floor
+  GLfloat red[] = {1.0,0,0};
+  GLfloat orange[] = {1.0,0.4,0};
+  GLfloat yellow[] = {1.0,1.0,0};
+  GLfloat green[] = {0,1.0,0};
+  GLfloat blue[] = {0,0,1.0};
+  GLfloat indigo[] = {0.3,0,0.5};
+  GLfloat violet[] = {1.0,0,1.0};
+  GLfloat white[] = {1.0,1.0,1.0};
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glLoadIdentity();
+  gluLookAt(10, 3, 0,
+            4, 0.0, 4,
+            0.0, 1.0, 0.0);
+  GLfloat lightPosition[] = {4, 3, 7, 1};
+  glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+  glBegin(GL_QUADS);
+  glNormal3d(0, 1, 0);
+  for (int x = 0; x < 8 - 1; x++) {
+    for (int z = 0; z < 8 - 1; z++) {
+      if ((x+z)%2 == 0) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, green);
+      if ((x+z)%2 == 1) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, violet);
+      // if ((x+z)%7 == 2) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, yellow);
+      // if ((x+z)%7 == 3) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, green);
+      // if ((x+z)%7 == 4) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, blue);
+      // if ((x+z)%7 == 5) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, indigo);
+      // if ((x+z)%7 == 6) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, violet);
+      glVertex3d(x, 0, z);
+      glVertex3d(x+1, 0, z);
+      glVertex3d(x+1, 0, z+1);
+      glVertex3d(x, 0, z+1);
+    }
+  }
+  glEnd();
+  glLineWidth(6);
+  glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, white);
+  glBegin(GL_LINES);
+  glVertex3d(4,0,4);
+  glVertex3f(goal[0], goal[1], goal[2]);
+  glEnd();
   inverseKinematicsSolver();
   getEndPoint(Segment::numSegments, true);
-  glBegin(GL_POINTS);
   glPointSize(10);
+  glColor3f(0,0,0);
+  glBegin(GL_POINTS);
   glVertex3f(goal[0], goal[1], goal[2]);
-  glVertex3f(0, 0, 0);
+  glVertex3f(4,0,4);
   glEnd();
-
 
   //-----------------------------------------------------------------------
 
@@ -309,6 +320,17 @@ void myFrameMove() {
 }
 
 
+void timer(int v) {
+  timeCount++;
+  timeCount=timeCount%100;
+  goal[0] = sin(timeCount)+4;
+  goal[1] = .5*(cos(timeCount)+2);
+  goal[2] = sin(timeCount)+4;
+  glutPostRedisplay();
+  glutTimerFunc(60, timer, v);
+}
+
+
 //****************************************************
 // the usual stuff, nothing exciting here
 //****************************************************
@@ -317,17 +339,15 @@ int main(int argc, char *argv[]) {
   glutInit(&argc, argv);
 
   //This tells glut to use a double-buffered window with red, green, and blue channels 
-  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-
-  // Initalize theviewport size
-  viewport.w = 700;
-  viewport.h = 700;
+  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+  viewport.w = 800;
+  viewport.h = 800;
 
   //The size and position of the window
   glutInitWindowSize(viewport.w, viewport.h);
   glutInitWindowPosition(0, 0);
   glutCreateWindow("CS184!");
-
+  glutTimerFunc(100, timer, 0);
   initScene();                                 // quick function to set up scene
   glutKeyboardFunc(handle); //exit on space
 
