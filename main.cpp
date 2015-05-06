@@ -29,7 +29,7 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .001;
-Vector3d goal                 = Vector3d(0, 1, 0);
+Vector3d goal                 = Vector3d(0, 0, 0);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -61,6 +61,7 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
   if (i==3) changeColor(1,0,1);
   glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
   glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
+  cout << "END POINT: " << endPoint << endl;
 }
 
 //*********************************************************
@@ -95,7 +96,7 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
     endPoint        = ((Affine3d) xRot*yRot*zRot*translation)*prevEndPoint;
     currentSegment->jointLoc = prevEndPoint;
     currentSegment->end = endPoint;
-    cout << "FOR a segment of len " << currentSegment->length << ", joint is at " << currentSegment->jointLoc << " and end is " << endPoint << endl;
+    // cout << "FOR a segment of len " << currentSegment->length << ", joint is at " << currentSegment->jointLoc << " and end is " << endPoint << endl;
     if (draw) alterColorForDebugging(i, currentSegment->jointLoc, currentSegment->end);
     prevEndPoint = endPoint;
   }
@@ -112,7 +113,6 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
 // computeJacobian
 // Computes the jacobian matrix from the current segments &
 // endpoints.
-// http://www.dandiggins.co.uk/iksolver-3.html
 //*********************************************************
 MatrixXd computeJacobian() {
   MatrixXd jacobian = MatrixXd(3,3*Segment::numSegments);
@@ -121,12 +121,12 @@ MatrixXd computeJacobian() {
   Vector3d zVec     = Vector3d(0,0,1);
   Vector3d xCol, yCol, zCol, joint, difference;
   Vector3d endEffector = segments[Segment::numSegments-1]->end;
-  cout << "endeffect" << endEffector << endl;
+  // cout << "endeffect" << endEffector << endl;
   //need to get into world coordinate space
   for (int i=0; i<Segment::numSegments; i++) {
     Segment * currentSegment = segments[i];
     joint = currentSegment->jointLoc;
-    cout << "joint location of curr " << joint;
+    // cout << "joint location of curr " << joint;
     difference  = endEffector-joint; //difference = end effector - curr joint
     xCol        = Vector3d(0,0,0);
     yCol        = Vector3d(0,0,0);
@@ -183,9 +183,9 @@ void updateSegmentRotations(VectorXd addToRots) {
 //*********************************************************
 void inverseKinematicsSolver() {
   Vector3d endPoint         = getEndPoint();
-  cout << "ENDPOINT CALC IN IK OF VAL " << endPoint << endl;
+  // cout << "ENDPOINT CALC IN IK OF VAL " << endPoint << endl;
   float distanceToGoal      = distanceBetween(endPoint, goal);
-  double lambda             = 1;
+  double lambda             = 200;
   int numCalcs              = 0;
   float newDistanceToGoal;
   MatrixXd jacobian;
@@ -196,17 +196,24 @@ void inverseKinematicsSolver() {
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
     numCalcs++;
     jacobian       = computeJacobian();
-    cout << "Jacobian: \n" << jacobian << endl;    
+    // cout << "Jacobian: \n" << jacobian << endl;    
     distanceToGoal = distanceBetween(endPoint, goal);
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
-    cout << "After psuedo-inversing: \n" << pseudoJacobian << endl;
+    // cout << "After psuedo-inversing: \n" << pseudoJacobian << endl;
     addToRots      = pseudoJacobian*lambda*(goal - endPoint);
     updateSegmentRotations(addToRots);
-    cout << "the rotations added are \n" << addToRots << endl;
+    // cout << "the rotations added are \n" << addToRots << endl;
     endPoint          = getEndPoint(Segment::numSegments,true);
-    cout << "NEW UPDATED ENDPOINT IS \n" << endPoint << endl;
+    // cout << "NEW UPDATED ENDPOINT IS \n" << endPoint << endl;
     newDistanceToGoal = distanceBetween(endPoint, goal);
     if (distanceToGoal < newDistanceToGoal) lambda*=.5;
+    glLoadIdentity();
+    glBegin(GL_LINES); 
+    for (int i=0; i<Segment::numSegments; i++) {
+      glVertex3d(segments[i]->jointLoc[0], segments[i]->jointLoc[1], segments[i]->jointLoc[2]);
+      glVertex3d(segments[i]->end[0], segments[i]->end[1], segments[i]->end[2]);
+    }
+    glEnd();
   }
 }
 
@@ -288,17 +295,17 @@ void myDisplay() {
   GLfloat white[] = {1.0,1.0,1.0};
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
-  gluLookAt(10, 3, 0,
-            4, 0.0, 4,
+  gluLookAt(5, 2, -5,
+            0, 0, 0,
             0.0, 1.0, 0.0);
-  GLfloat lightPosition[] = {4, 3, 7, 1};
+  GLfloat lightPosition[] = {0, 2, 0, 1};
   glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
   glBegin(GL_QUADS);
   glNormal3d(0, 1, 0);
-  for (int x = 0; x < 8 - 1; x++) {
-    for (int z = 0; z < 8 - 1; z++) {
-      if ((x+z)%2 == 0) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, green);
-      if ((x+z)%2 == 1) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, violet);
+  for (int x = -4; x < 4 - 1; x++) {
+    for (int z = -4; z < 4 - 1; z++) {
+      if (abs(x+z)%2 == 0) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, green);
+      if (abs(x+z)%2 == 1) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, violet);
       glVertex3d(x, 0, z);
       glVertex3d(x+1, 0, z);
       glVertex3d(x+1, 0, z+1);
@@ -308,10 +315,10 @@ void myDisplay() {
   glEnd();
   glLineWidth(6);
   glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, white);
-  glBegin(GL_LINES);
-  glVertex3d(4,0,4);
-  glVertex3f(goal[0], goal[1], goal[2]);
-  glEnd();
+  // glBegin(GL_LINES);
+  // glVertex3d(0,0,0);
+  // glVertex3f(goal[0], goal[1], goal[2]);
+  // glEnd();
   inverseKinematicsSolver();
   getEndPoint(Segment::numSegments, true);
 
@@ -336,9 +343,12 @@ void myFrameMove() {
 void timer(int v) {
   timeCount++;
   timeCount=timeCount%100;
-  goal[0] = sin(timeCount)+4;
-  goal[1] = .5*(cos(timeCount)+2);
-  goal[2] = sin(timeCount)+4;
+  goal[0] = sin(timeCount)+0;
+  // goal[1] = .5*(cos(timeCount))+1;
+  // goal[2] = sin(timeCount)+0;
+  // goal[0] = 0;
+  // goal[1] = 1;
+  // goal[2] = 0;
   glutPostRedisplay();
   glutTimerFunc(60, timer, v);
 }
