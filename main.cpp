@@ -29,7 +29,7 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .001;
-Vector3d goal                 = Vector3d(0, 1, 0);
+Vector3d goal                 = Vector3d(1, 1, 0);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
