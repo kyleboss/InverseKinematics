@@ -29,7 +29,7 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .001;
-Vector3d goal                 = Vector3d(0, 0, 0);
+Vector3d goal                 = Vector3d(1, 1, 0);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -73,10 +73,11 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
 // http://stackoverflow.com/questions/10115354/inverse-kinematics-with-opengl-eigen3-unstable-jacobian-pseudoinverse
 //*********************************************************
 Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
-  Vector3d prevEndPoint, rad, endPoint;
+  Vector3d prevEndPoint, theta_vector, endPoint;
+  VectorXd prev_vector(4);
   AngleAxisd xRot, yRot, zRot;
   Segment * currentSegment;
-  Translation3d translation;
+  MatrixXd transformation = MatrixXd(4,4);
   prevEndPoint = Vector3d(0,0,0);
   endPoint = Vector3d(0,0,0);
 
@@ -88,15 +89,44 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
 
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
     currentSegment  = segments[i];
-    rad             = M_PI*currentSegment->rot/180;
-    xRot            = AngleAxisd(rad[0], Vector3d(-1, 0, 0));
-    yRot            = AngleAxisd(rad[1], Vector3d(0, -1, 0));
-    zRot            = AngleAxisd(rad[2], Vector3d(0, 0, -1));
-    translation     = Translation3d(Vector3d(currentSegment->length, 0, 0));
-    endPoint        = ((Affine3d) xRot*yRot*zRot*translation)*prevEndPoint;
-    currentSegment->jointLoc = prevEndPoint;
-    currentSegment->end = endPoint;
-    // cout << "FOR a segment of len " << currentSegment->length << ", joint is at " << currentSegment->jointLoc << " and end is " << endPoint << endl;
+    theta_vector  = M_PI*currentSegment->rot/180; //thetax,y,z in radians
+    double theta = theta_vector.norm();
+    double omega_x = theta_vector[0]/theta;
+    double omega_y = theta_vector[1]/theta;
+    double omega_z = theta_vector[2]/theta;
+    MatrixXd omega = MatrixXd(4,4);
+    double len = currentSegment->length;
+    omega(0,0) = 0;
+    omega(0,1) = -omega_z;
+    omega(0,2) = omega_y;
+    omega(0,3) = len;
+    omega(1,0) = omega_z;
+    omega(1,1) = 0;
+    omega(1,2) = -omega_x;
+    omega(1,3) = 0;
+    omega(2,0) = -omega_y;
+    omega(2,1) = omega_x;
+    omega(2,2) = 0;
+    omega(2,3) = 0;
+    omega(3,0) = 0;
+    omega(3,1) = 0;
+    omega(3,2) = 0;
+    omega(3,3) = 1;
+    
+
+    // omega << VectorXd(0,omega_z,-omega_y,len); 
+    // omega.col(1) = VectorXd(-omega_z,0,omega_x,0);
+    // omega.col(2) = VectorXd(omega_y,-omega_x,0,0);
+    // omega.col(3) = VectorXd(0,0,0,1);
+
+    transformation = Eigen::Matrix<double,4,4>::Identity() + omega*sin(theta) + omega*omega*(1-cos(theta));
+    cout << "the rotation and transformation matrix is \n" << transformation;
+
+    prev_vector << prevEndPoint[0], prevEndPoint[1], prevEndPoint[2], 1;
+
+    endPoint = transformation * prev_vector;
+    
+    cout << "FOR a segment of len " << currentSegment->length << ", joint is at " << currentSegment->jointLoc << " and new end is " << endPoint << endl;
     if (draw) alterColorForDebugging(i, currentSegment->jointLoc, currentSegment->end);
     prevEndPoint = endPoint;
   }
@@ -171,9 +201,9 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 //*********************************************************
 void updateSegmentRotations(VectorXd addToRots) {
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
-    segments[i]->rot[0] = fmod(addToRots[i*3+0], 360);
-    segments[i]->rot[1] = fmod(addToRots[i*3+1], 360);
-    segments[i]->rot[2] = fmod(addToRots[i*3+2], 360);
+    segments[i]->rot[0] = addToRots[i*3+0];
+    segments[i]->rot[1] = addToRots[i*3+1];
+    segments[i]->rot[2] = addToRots[i*3+2];
   } 
 }
 
@@ -185,7 +215,7 @@ void inverseKinematicsSolver() {
   Vector3d endPoint         = getEndPoint();
   // cout << "ENDPOINT CALC IN IK OF VAL " << endPoint << endl;
   float distanceToGoal      = distanceBetween(endPoint, goal);
-  double lambda             = 200;
+  double lambda             = 5;
   int numCalcs              = 0;
   float newDistanceToGoal;
   MatrixXd jacobian;
@@ -199,12 +229,15 @@ void inverseKinematicsSolver() {
     // cout << "Jacobian: \n" << jacobian << endl;    
     distanceToGoal = distanceBetween(endPoint, goal);
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
-    // cout << "After psuedo-inversing: \n" << pseudoJacobian << endl;
+    cout << "After psuedo-inversing: \n" << pseudoJacobian << endl;
+    cout << "g - pe is " << goal-endPoint;
     addToRots      = pseudoJacobian*lambda*(goal - endPoint);
     updateSegmentRotations(addToRots);
-    // cout << "the rotations added are \n" << addToRots << endl;
-    endPoint          = getEndPoint(Segment::numSegments,true);
-    // cout << "NEW UPDATED ENDPOINT IS \n" << endPoint << endl;
+    cout << "the rotations added are \n" << addToRots << endl;
+
+    endPoint          = getEndPoint(Segment::numSegments,true); //correct reupdating?
+    
+    cout << "NEW UPDATED ENDPOINT IS \n" << endPoint << endl;
     newDistanceToGoal = distanceBetween(endPoint, goal);
     if (distanceToGoal < newDistanceToGoal) lambda*=.5;
     glLoadIdentity();
@@ -257,7 +290,7 @@ void initScene(){
   glEnable(GL_LIGHT0);
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to black, fully transparent
   changeColor(0.75f,1.0f,0.0f);
-  Segment * a = new Segment(1);
+  Segment * a = new Segment(2);
   // Segment * b = new Segment(1);
   // Segment * c = new Segment(1);
   // Segment * d = new Segment(1);
