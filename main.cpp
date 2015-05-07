@@ -49,13 +49,6 @@ void changeColor(float r, float g, float b) {
   glColor3f(r,g,b);
 }
 
-void undo() {
-  for (int i = 0; i<Segment::numSegments; i++) {
-    segments[i]->end = segments[i]->old_end;
-    segments[i]->jointLoc = segments[i]->old_jointLoc;
-  }
-}
-
 //*********************************************************
 // alterColorForDebugging
 // Helper function to better understand the IK Solver from
@@ -321,7 +314,7 @@ void myDisplay() {
   glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, white);
   glBegin(GL_POINTS);
   // glVertex3d(0,0,0);
-  glVertex3f(realGoal[0], realGoal[1], realGoal[2]);
+  glVertex3f(goal[0], goal[1], goal[2]);
   glEnd();
   inverseKinematicsSolver();
   getEndPoint(Segment::numSegments, true);
@@ -351,7 +344,7 @@ void timer(int v) {
   // goal[1] = sin(timeCount)+0;
   // realGoal[1] = sin(timeCount)+0;
   goal[1] = .5*(cos(timeCount))+1;
-  realGoal[1] = .5*(cos(timeCount))+1;
+  // realGoal[1] = .5*(cos(timeCount))+1;
   // goal[2] = sin(timeCount)+0;
   // realGoal[1] = .5*(cos(timeCount))+1;
   // goal[0] = 0;
