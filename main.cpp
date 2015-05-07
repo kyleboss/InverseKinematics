@@ -29,7 +29,7 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .001;
-Vector3d goal                 = Vector3d(12, 1, 0);
+Vector3d goal                 = Vector3d(0, 3, 0);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -144,10 +144,11 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 // rotations are in degreeees
 //*********************************************************
 void updateSegmentRotations(VectorXd addToRots) {
+  AngleAxisd rot;
   Segment * currentSegment;
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
     currentSegment  = segments[i];
-    AngleAxisd rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
+    rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
     rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
     rot = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1))*rot;
     currentSegment->transMatrix = rot*currentSegment->transMatrix;
@@ -237,12 +238,21 @@ void initScene(){
   changeColor(0.75f,1.0f,0.0f);
   Segment * a = new Segment(1);
   Segment * b = new Segment(2);
+<<<<<<< HEAD
   Segment * c = new Segment(3);
   Segment * d = new Segment(4);
   segments.push_back(a);
   segments.push_back(b);
   segments.push_back(c);
   segments.push_back(d);
+=======
+  // Segment * c = new Segment(3);
+  // Segment * d = new Segment(4);
+  segments.push_back(a);
+  segments.push_back(b);
+  // segments.push_back(c);
+  // segments.push_back(d);
+>>>>>>> origin/master
   myReshape(viewport.w,viewport.h);
 }
 
@@ -273,7 +283,7 @@ void myDisplay() {
   GLfloat white[] = {1.0,1.0,1.0};
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
-  gluLookAt(5, 2, 5,
+  gluLookAt(5, 2, 8,
             0, 0, 0,
             0.0, 1.0, 0.0);
   GLfloat lightPosition[] = {0, 2, 0, 1};
