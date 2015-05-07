@@ -29,7 +29,7 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .001;
-Vector3d goal                 = Vector3d(0, 1, 0);
+Vector3d goal                 = Vector3d(12, 1, 0);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -80,8 +80,9 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
   Vector3d prevEndPoint = Vector3d(0,0,0);
 
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
-    endPoint += segments[i]->transMatrix*Vector3d(0,0,segments[i]->length);
+    endPoint += segments[i]->transMatrix*Vector3d(segments[i]->length,0,0);
     segments[i]->end = endPoint;
+    segments[i]->jointLoc = prevEndPoint;
     if (draw) alterColorForDebugging(i, prevEndPoint, endPoint);
     prevEndPoint = endPoint;
   }
@@ -171,12 +172,16 @@ void inverseKinematicsSolver() {
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
     numCalcs++;
     jacobian       = computeJacobian();
+    cout << "jacobian is \n" << jacobian << endl;
     distanceToGoal = distanceBetween(endPoint, goal);
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
+    cout << "inverted jacobian is \n" << pseudoJacobian << endl;
     addToRots      = pseudoJacobian*lambda*(goal - endPoint);
     updateSegmentRotations(addToRots);
     cout << "addToRots: \n" << addToRots << endl;
     endPoint          = getEndPoint(Segment::numSegments); //correct reupdating?
+    cout << "NEW END POINT: \n" << endPoint << endl;
+
     newDistanceToGoal = distanceBetween(endPoint, goal);
     // cout << "newDistanceToGoal: " << newDistanceToGoal << endl;
     if (distanceToGoal < newDistanceToGoal) lambda*=.5;
@@ -231,13 +236,13 @@ void initScene(){
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to black, fully transparent
   changeColor(0.75f,1.0f,0.0f);
   Segment * a = new Segment(1);
-  // Segment * b = new Segment(2);
-  // Segment * c = new Segment(3);
-  // Segment * d = new Segment(4);
+  Segment * b = new Segment(2);
+  Segment * c = new Segment(3);
+  Segment * d = new Segment(4);
   segments.push_back(a);
-  // segments.push_back(b);
-  // segments.push_back(c);
-  // segments.push_back(d);
+  segments.push_back(b);
+  segments.push_back(c);
+  segments.push_back(d);
   myReshape(viewport.w,viewport.h);
 }
 
