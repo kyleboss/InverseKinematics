@@ -28,7 +28,7 @@ using namespace std;
 Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
-float acceptableDistance      = .001;
+float acceptableDistance      = .01;
 Vector3d goal                 = Vector3d(0, 3, 0);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
@@ -64,7 +64,6 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
   if (i==3) glColor3d(1,0,1);
   glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
   glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
-  cout << "END POINT: \n" << endPoint << endl;
   glEnd();
 }
 
@@ -172,12 +171,13 @@ void inverseKinematicsSolver() {
 
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
     numCalcs++;
+    if (numCalcs == 999) cout << "GRR" << endl;
     jacobian       = computeJacobian();
     distanceToGoal = distanceBetween(endPoint, goal);
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
     addToRots      = pseudoJacobian*lambda*(goal - endPoint);
     updateSegmentRotations(addToRots);
-    cout << "addToRots: \n" << addToRots << endl;
+    // cout << "addToRots: \n" << addToRots << endl;
     endPoint          = getEndPoint(Segment::numSegments); //correct reupdating?
     newDistanceToGoal = distanceBetween(endPoint, goal);
     // cout << "newDistanceToGoal: " << newDistanceToGoal << endl;
@@ -233,7 +233,7 @@ void initScene(){
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to black, fully transparent
   changeColor(0.75f,1.0f,0.0f);
   Segment * a = new Segment(1);
-  Segment * b = new Segment(2);
+  Segment * b = new Segment(3);
   // Segment * c = new Segment(3);
   // Segment * d = new Segment(4);
   segments.push_back(a);
