@@ -201,9 +201,9 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 //*********************************************************
 void updateSegmentRotations(VectorXd addToRots) {
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
-    segments[i]->rot[0] = addToRots[i*3+0];
-    segments[i]->rot[1] = addToRots[i*3+1];
-    segments[i]->rot[2] = addToRots[i*3+2];
+    segments[i]->rot[0] = segments[i]->rot[0] - addToRots[i*3+0];
+    segments[i]->rot[1] = segments[i]->rot[1] - addToRots[i*3+1];
+    segments[i]->rot[2] = segments[i]->rot[2] - addToRots[i*3+2];
   } 
 }
 
