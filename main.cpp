@@ -30,6 +30,7 @@ Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .1;
 <<<<<<< HEAD
+<<<<<<< HEAD
 Vector3d goal                 = Vector3d(2, 2, 0);
 Vector3d realGoal                 = Vector3d(2, 2, 0);
 =======
@@ -40,6 +41,10 @@ Vector3d realGoal                 = Vector3d(0, 2, 1);
 Vector3d goal                 = Vector3d(2, 0, 0);
 Vector3d realGoal                 = Vector3d(2, 0, 0);
 >>>>>>> origin/master
+>>>>>>> origin/master
+=======
+Vector3d goal                 = Vector3d(2, 0, 0);
+Vector3d realGoal                 = Vector3d(2, 0, 0);
 >>>>>>> origin/master
 
 std::vector<Segment *> segments = std::vector<Segment *>();
@@ -172,34 +177,14 @@ void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
   Segment * currentSegment;
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
     currentSegment  = segments[i];
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
     if (updateOld) {
       currentSegment->oldTransMatrix = currentSegment->transMatrix;
       currentSegment->oldLoc = currentSegment->jointLoc;
       currentSegment->oldEnd = currentSegment->end;
     }
->>>>>>> origin/master
     rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
     rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
     rot = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1))*rot;
-=======
-    if (updateOld) currentSegment->oldTransMatrix = currentSegment->transMatrix;
-    rotx = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
-    roty = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0));
-    rotz = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1));
-    // rot = AngleAxisd(addToRots[3*i+0] * PI / 180, (currentSegment->transMatrix*Vector3d(1,0,0)).normalized());
-    // rot = AngleAxisd(addToRots[3*i+1] * PI / 180, (currentSegment->transMatrix*Vector3d(0,1,0)).normalized())*rot;
-    // rot = AngleAxisd(addToRots[3*i+2] * PI / 180, (currentSegment->transMatrix*Vector3d(0,0,1)).normalized())*rot;
-        cout << "rot! x \n" << rotx.matrix() << endl;
-    cout << "rot! y \n" << roty.matrix() << endl;
-    cout << "rot! z\n" << rotz.matrix() << endl;
-
-    rot = rotx * roty * rotz;
-
-    cout << "rot! \n" << rot.matrix() << endl;
->>>>>>> 9d1fa66407d6104f194d84b1722dad97873ae0f7
     currentSegment->transMatrix = rot*currentSegment->transMatrix;
   } 
 }
@@ -223,7 +208,7 @@ void inverseKinematicsSolver() {
   // }
 
 
-  while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
+  while (distanceToGoal > acceptableDistance && numCalcs < 10*Segment::numSegments) {
     numCalcs++;
     jacobian       = computeJacobian();
     cout << "jacobian \n" << jacobian << endl;
@@ -235,23 +220,10 @@ void inverseKinematicsSolver() {
     endPoint = getEndPoint(); //correct reupdating?
     newDistanceToGoal = distanceBetween(endPoint, goal);
     // cout << "newDistanceToGoal: " << newDistanceToGoal << endl;
-<<<<<<< HEAD
-    // while (distanceToGoal < newDistanceToGoal) {
-    //   for (int i=0; i<Segment::numSegments; i++) segments[i]->transMatrix = segments[i]->oldTransMatrix;
-    if (distanceToGoal < newDistanceToGoal) {
-      undo();
-      lambda *= .5;
-    }
-    //   updateSegmentRotations(addToRots*lambda, false);
-    //   endPoint = getEndPoint();
-    //   newDistanceToGoal = distanceBetween(goal, endPoint);
-    // }
-=======
     if (distanceToGoal < newDistanceToGoal) {
       for (int i=0; i<Segment::numSegments; i++) segments[i]->transMatrix = segments[i]->oldTransMatrix;
       lambda *= .5;
     }
->>>>>>> origin/master
     distanceToGoal = distanceBetween(endPoint, goal);
     // glLoadIdentity();
     // glBegin(GL_LINES); 
