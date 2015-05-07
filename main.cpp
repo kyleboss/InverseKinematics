@@ -173,12 +173,16 @@ void inverseKinematicsSolver() {
     numCalcs++;
     if (numCalcs == 999) cout << "GRR" << endl;
     jacobian       = computeJacobian();
+    cout << "jacobian is \n" << jacobian << endl;
     distanceToGoal = distanceBetween(endPoint, goal);
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
+    cout << "inverted jacobian is \n" << pseudoJacobian << endl;
     addToRots      = pseudoJacobian*lambda*(goal - endPoint);
     updateSegmentRotations(addToRots);
     // cout << "addToRots: \n" << addToRots << endl;
     endPoint          = getEndPoint(Segment::numSegments); //correct reupdating?
+    cout << "NEW END POINT: \n" << endPoint << endl;
+
     newDistanceToGoal = distanceBetween(endPoint, goal);
     // cout << "newDistanceToGoal: " << newDistanceToGoal << endl;
     if (distanceToGoal < newDistanceToGoal) lambda*=.5;
@@ -233,13 +237,26 @@ void initScene(){
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to black, fully transparent
   changeColor(0.75f,1.0f,0.0f);
   Segment * a = new Segment(1);
+<<<<<<< HEAD
   Segment * b = new Segment(3);
+=======
+  Segment * b = new Segment(2);
+<<<<<<< HEAD
+  Segment * c = new Segment(3);
+  Segment * d = new Segment(4);
+  segments.push_back(a);
+  segments.push_back(b);
+  segments.push_back(c);
+  segments.push_back(d);
+=======
+>>>>>>> 3f26ac5092e4ba3e30fffc8110c13f1f0a2e967b
   // Segment * c = new Segment(3);
   // Segment * d = new Segment(4);
   segments.push_back(a);
   segments.push_back(b);
   // segments.push_back(c);
   // segments.push_back(d);
+>>>>>>> origin/master
   myReshape(viewport.w,viewport.h);
 }
 
