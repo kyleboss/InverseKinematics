@@ -29,8 +29,13 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .1;
+<<<<<<< HEAD
 Vector3d goal                 = Vector3d(0, 2, 1);
 Vector3d realGoal                 = Vector3d(0, 2, 1);
+=======
+Vector3d goal                 = Vector3d(2, 0, 0);
+Vector3d realGoal                 = Vector3d(2, 0, 0);
+>>>>>>> origin/master
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -260,9 +265,15 @@ void initScene(){
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to black, fully transparent
   changeColor(0.75f,1.0f,0.0f);
   Segment * a = new Segment(1);
+<<<<<<< HEAD
   Segment * b = new Segment(2);
   // Segment * c = new Segment(.25);
   // Segment * d = new Segment(.13);
+=======
+  Segment * b = new Segment(1);
+  // Segment * c = new Segment(3);
+  // Segment * d = new Segment(4);
+>>>>>>> origin/master
   segments.push_back(a);
   segments.push_back(b);
   // segments.push_back(c);
@@ -346,10 +357,10 @@ void myFrameMove() {
 void timer(int v) {
   glLoadIdentity();
   timeCount++;
-  goal[0] = sin(timeCount)+0;
-  realGoal[0] = sin(timeCount)+0;
-  // goal[1] = .5*(cos(timeCount))+1;
-  // realGoal[1] = .5*(cos(timeCount))+1;
+  // goal[1] = sin(timeCount)+0;
+  // realGoal[1] = sin(timeCount)+0;
+  goal[1] = .5*(cos(timeCount))+1;
+  realGoal[1] = .5*(cos(timeCount))+1;
   // goal[2] = sin(timeCount)+0;
   // realGoal[1] = .5*(cos(timeCount))+1;
   // goal[0] = 0;
