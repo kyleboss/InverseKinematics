@@ -29,8 +29,7 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .1;
-Vector3d goal                 = Vector3d(2, 0, 0);
-Vector3d realGoal                 = Vector3d(2, 0, 0);
+Vector3d goal                 = Vector3d(2, 2, 0);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -48,6 +47,13 @@ float distanceBetween(Vector3d point1, Vector3d point2) {
 //*********************************************************
 void changeColor(float r, float g, float b) {
   glColor3f(r,g,b);
+}
+
+void undo() {
+  for (int i = 0; i<Segment::numSegments; i++) {
+    segments[i]->end = segments[i]->old_end;
+    segments[i]->jointLoc = segments[i]->old_jointLoc;
+  }
 }
 
 //*********************************************************
@@ -144,7 +150,7 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 //*********************************************************
 // updateSegmentRotations
 // Updates a segment's degree of rotation given a vector
-// of rotational degree values. addToRots - 1x3n
+// of rotational values. addToRots - 1x3n
 // rotations are in degreeees
 //*********************************************************
 void updateSegmentRotations(VectorXd addToRots, bool test=false) {
@@ -185,7 +191,7 @@ void inverseKinematicsSolver() {
   // }
 
 
-  while (distanceToGoal > acceptableDistance && numCalcs < 100*Segment::numSegments) {
+  while (distanceToGoal > acceptableDistance && numCalcs < 10*Segment::numSegments) {
     numCalcs++;
     jacobian       = computeJacobian();
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
@@ -213,6 +219,7 @@ void inverseKinematicsSolver() {
     // glEnd();
   }
 }
+
 
 
 //****************************************************
