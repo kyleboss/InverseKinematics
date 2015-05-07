@@ -29,8 +29,8 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .1;
-Vector3d goal                 = Vector3d(2, 0, 0);
-Vector3d realGoal                 = Vector3d(2, 0, 0);
+Vector3d goal                 = Vector3d(0, 10, 0);
+Vector3d realGoal                 = Vector3d(0, 10, 0);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -101,6 +101,7 @@ MatrixXd computeJacobian() {
   Vector3d zVec     = Vector3d(0,0,1);
   Vector3d xCol, yCol, zCol, joint, difference;
   Vector3d endEffector = segments[Segment::numSegments-1]->end;
+  // cout << "end effector in jacob \n" << endEffector << endl;
   //need to get into world coordinate space
   for (int i=0; i<Segment::numSegments; i++) {
     Segment * currentSegment = segments[i];
@@ -189,16 +190,21 @@ void inverseKinematicsSolver() {
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
     cout << "pseudoJacobian \n" << pseudoJacobian << endl;    
     addToRots      = pseudoJacobian*(goal - endPoint);
+    distanceToGoal = distanceBetween(endPoint, goal);
     updateSegmentRotations(addToRots*lambda);
-    cout << "addToRots: \n" << addToRots << endl;
+    // cout << "addToRots: \n" << addToRots << endl;
     endPoint = getEndPoint(); //correct reupdating?
     newDistanceToGoal = distanceBetween(endPoint, goal);
     // cout << "newDistanceToGoal: " << newDistanceToGoal << endl;
     if (distanceToGoal < newDistanceToGoal) {
+      cout << "bad: we're further at endpoint " << endPoint << "when the goal is " << goal;
       for (int i=0; i<Segment::numSegments; i++) segments[i]->transMatrix = segments[i]->oldTransMatrix;
       lambda *= .5;
+      cout << "jacobian \n" << jacobian << endl;
+      updateSegmentRotations(addToRots*lambda);
+
     }
-    distanceToGoal = distanceBetween(endPoint, goal);
+
     // glLoadIdentity();
     // glBegin(GL_LINES); 
     // for (int i=0; i<Segment::numSegments; i++) {
@@ -250,13 +256,13 @@ void initScene(){
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to black, fully transparent
   changeColor(0.75f,1.0f,0.0f);
   Segment * a = new Segment(1);
-  Segment * b = new Segment(1);
-  // Segment * c = new Segment(3);
-  // Segment * d = new Segment(4);
+  Segment * b = new Segment(2);
+  Segment * c = new Segment(3);
+  Segment * d = new Segment(4);
   segments.push_back(a);
   segments.push_back(b);
-  // segments.push_back(c);
-  // segments.push_back(d);
+  segments.push_back(c);
+  segments.push_back(d);
   myReshape(viewport.w,viewport.h);
 }
 
@@ -338,8 +344,8 @@ void timer(int v) {
   timeCount++;
   // goal[1] = sin(timeCount)+0;
   // realGoal[1] = sin(timeCount)+0;
-  goal[1] = .5*(cos(timeCount))+1;
-  realGoal[1] = .5*(cos(timeCount))+1;
+  // goal[1] = .5*(cos(timeCount))+1;
+  // realGoal[1] = .5*(cos(timeCount))+1;
   // goal[2] = sin(timeCount)+0;
   // realGoal[1] = .5*(cos(timeCount))+1;
   // goal[0] = 0;
