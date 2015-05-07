@@ -28,8 +28,9 @@ using namespace std;
 Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
-float acceptableDistance      = .01;
-Vector3d goal                 = Vector3d(0, 3, 0);
+float acceptableDistance      = .1;
+Vector3d goal                 = Vector3d(0, 1, 1);
+Vector3d realGoal                 = Vector3d(0, 1, 1);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -142,11 +143,12 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 // of rotational degree values. addToRots - 1x3n
 // rotations are in degreeees
 //*********************************************************
-void updateSegmentRotations(VectorXd addToRots) {
+void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
   AngleAxisd rot;
   Segment * currentSegment;
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
     currentSegment  = segments[i];
+    if (updateOld) currentSegment->oldTransMatrix = currentSegment->transMatrix;
     rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
     rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
     rot = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1))*rot;
@@ -168,24 +170,29 @@ void inverseKinematicsSolver() {
   MatrixXd pseudoJacobian;
   VectorXd addToRots = Vector3d(0,0,0);
 
+  if (Segment::totalLength < distanceBetween(Vector3d(0,0,0), goal)) { 
+    goal = goal.normalized() * Segment::totalLength; 
+  }
+
 
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
     numCalcs++;
-    if (numCalcs == 999) cout << "GRR" << endl;
     jacobian       = computeJacobian();
-    cout << "jacobian is \n" << jacobian << endl;
-    distanceToGoal = distanceBetween(endPoint, goal);
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
-    cout << "inverted jacobian is \n" << pseudoJacobian << endl;
-    addToRots      = pseudoJacobian*lambda*(goal - endPoint);
-    updateSegmentRotations(addToRots);
+    addToRots      = pseudoJacobian*(goal - endPoint);
+    updateSegmentRotations(addToRots*lambda);
     // cout << "addToRots: \n" << addToRots << endl;
-    endPoint          = getEndPoint(Segment::numSegments); //correct reupdating?
-    cout << "NEW END POINT: \n" << endPoint << endl;
-
+    endPoint = getEndPoint(); //correct reupdating?
     newDistanceToGoal = distanceBetween(endPoint, goal);
     // cout << "newDistanceToGoal: " << newDistanceToGoal << endl;
-    if (distanceToGoal < newDistanceToGoal) lambda*=.5;
+    // while (distanceToGoal < newDistanceToGoal) {
+    //   for (int i=0; i<Segment::numSegments; i++) segments[i]->transMatrix = segments[i]->oldTransMatrix;
+    if (distanceToGoal < newDistanceToGoal) lambda *= .5;
+    //   updateSegmentRotations(addToRots*lambda, false);
+    //   endPoint = getEndPoint();
+    //   newDistanceToGoal = distanceBetween(goal, endPoint);
+    // }
+    distanceToGoal = distanceBetween(endPoint, goal);
     // glLoadIdentity();
     // glBegin(GL_LINES); 
     // for (int i=0; i<Segment::numSegments; i++) {
@@ -237,26 +244,13 @@ void initScene(){
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to black, fully transparent
   changeColor(0.75f,1.0f,0.0f);
   Segment * a = new Segment(1);
-<<<<<<< HEAD
-  Segment * b = new Segment(3);
-=======
   Segment * b = new Segment(2);
-<<<<<<< HEAD
-  Segment * c = new Segment(3);
-  Segment * d = new Segment(4);
-  segments.push_back(a);
-  segments.push_back(b);
-  segments.push_back(c);
-  segments.push_back(d);
-=======
->>>>>>> 3f26ac5092e4ba3e30fffc8110c13f1f0a2e967b
   // Segment * c = new Segment(3);
   // Segment * d = new Segment(4);
   segments.push_back(a);
   segments.push_back(b);
   // segments.push_back(c);
   // segments.push_back(d);
->>>>>>> origin/master
   myReshape(viewport.w,viewport.h);
 }
 
@@ -309,7 +303,7 @@ void myDisplay() {
   glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, white);
   glBegin(GL_POINTS);
   // glVertex3d(0,0,0);
-  glVertex3f(goal[0], goal[1], goal[2]);
+  glVertex3f(realGoal[0], realGoal[1], realGoal[2]);
   glEnd();
   inverseKinematicsSolver();
   getEndPoint(Segment::numSegments, true);
@@ -336,8 +330,11 @@ void timer(int v) {
   glLoadIdentity();
   timeCount++;
   goal[0] = sin(timeCount)+0;
+  realGoal[0] = sin(timeCount)+0;
   // goal[1] = .5*(cos(timeCount))+1;
+  // realGoal[1] = .5*(cos(timeCount))+1;
   // goal[2] = sin(timeCount)+0;
+  // realGoal[1] = .5*(cos(timeCount))+1;
   // goal[0] = 0;
   // goal[1] = 1;
   // goal[2] = 0;
