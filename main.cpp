@@ -75,14 +75,18 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
 // is provided, it will return the end-point of the segment
 // farthest away from the root. 
 //*********************************************************
-Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
+Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false, bool test = false) {
   Vector3d endPoint = Vector3d(0,0,0);
   Vector3d prevEndPoint = Vector3d(0,0,0);
 
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
-    endPoint += segments[i]->transMatrix*Vector3d(segments[i]->length,0,0);
-    segments[i]->end = endPoint;
-    segments[i]->jointLoc = prevEndPoint;
+    if (!test) {
+      endPoint += segments[i]->transMatrix*Vector3d(segments[i]->length,0,0);
+      segments[i]->end = endPoint;
+      segments[i]->jointLoc = prevEndPoint;
+    } else {
+      endPoint += segments[i]->testMatrix*Vector3d(segments[i]->length,0,0);
+    }
     if (draw) alterColorForDebugging(i, prevEndPoint, endPoint);
     prevEndPoint = endPoint;
   }
@@ -143,7 +147,7 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 // of rotational degree values. addToRots - 1x3n
 // rotations are in degreeees
 //*********************************************************
-void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
+void updateSegmentRotations(VectorXd addToRots, bool test=false) {
   AngleAxisd rotx;
   AngleAxisd roty;
   AngleAxisd rotz;
@@ -151,15 +155,14 @@ void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
   Segment * currentSegment;
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
     currentSegment  = segments[i];
-    if (updateOld) {
-      currentSegment->oldTransMatrix = currentSegment->transMatrix;
-      currentSegment->oldLoc = currentSegment->jointLoc;
-      currentSegment->oldEnd = currentSegment->end;
-    }
     rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
     rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
     rot = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1))*rot;
-    currentSegment->transMatrix = rot*currentSegment->transMatrix;
+    if (!test) {
+      currentSegment->transMatrix = rot*currentSegment->transMatrix;
+    } else {
+      currentSegment->testMatrix = rot*currentSegment->transMatrix;
+    }
   } 
 }
 
@@ -182,22 +185,24 @@ void inverseKinematicsSolver() {
   // }
 
 
-  while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
+  while (distanceToGoal > acceptableDistance && numCalcs < 100*Segment::numSegments) {
     numCalcs++;
     jacobian       = computeJacobian();
-    cout << "jacobian \n" << jacobian << endl;
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
-    cout << "pseudoJacobian \n" << pseudoJacobian << endl;    
     addToRots      = pseudoJacobian*(goal - endPoint);
-    updateSegmentRotations(addToRots*lambda);
-    cout << "addToRots: \n" << addToRots << endl;
-    endPoint = getEndPoint(); //correct reupdating?
+    updateSegmentRotations(addToRots*lambda, true);
+    endPoint = getEndPoint(Segment::numSegments, false, true); //correct reupdating?
     newDistanceToGoal = distanceBetween(endPoint, goal);
     // cout << "newDistanceToGoal: " << newDistanceToGoal << endl;
-    if (distanceToGoal < newDistanceToGoal) {
-      for (int i=0; i<Segment::numSegments; i++) segments[i]->transMatrix = segments[i]->oldTransMatrix;
+    if (distanceToGoal > newDistanceToGoal) {
+      lambda = 1;
+      updateSegmentRotations(addToRots*lambda);
+      endPoint = getEndPoint();
+      newDistanceToGoal = distanceBetween(endPoint, goal);
+    } else {
       lambda *= .5;
     }
+    endPoint = getEndPoint(Segment::numSegments, true);
     distanceToGoal = distanceBetween(endPoint, goal);
     // glLoadIdentity();
     // glBegin(GL_LINES); 
