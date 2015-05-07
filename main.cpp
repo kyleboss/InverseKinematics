@@ -29,8 +29,8 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .1;
-Vector3d goal                 = Vector3d(0, 1, 1);
-Vector3d realGoal                 = Vector3d(0, 1, 1);
+Vector3d goal                 = Vector3d(0, 2, 1);
+Vector3d realGoal                 = Vector3d(0, 2, 1);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -144,14 +144,27 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 // rotations are in degreeees
 //*********************************************************
 void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
+  AngleAxisd rotx;
+  AngleAxisd roty;
+  AngleAxisd rotz;
   AngleAxisd rot;
   Segment * currentSegment;
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
     currentSegment  = segments[i];
     if (updateOld) currentSegment->oldTransMatrix = currentSegment->transMatrix;
-    rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
-    rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
-    rot = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1))*rot;
+    rotx = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
+    roty = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0));
+    rotz = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1));
+    // rot = AngleAxisd(addToRots[3*i+0] * PI / 180, (currentSegment->transMatrix*Vector3d(1,0,0)).normalized());
+    // rot = AngleAxisd(addToRots[3*i+1] * PI / 180, (currentSegment->transMatrix*Vector3d(0,1,0)).normalized())*rot;
+    // rot = AngleAxisd(addToRots[3*i+2] * PI / 180, (currentSegment->transMatrix*Vector3d(0,0,1)).normalized())*rot;
+        cout << "rot! x \n" << rotx.matrix() << endl;
+    cout << "rot! y \n" << roty.matrix() << endl;
+    cout << "rot! z\n" << rotz.matrix() << endl;
+
+    rot = rotx * roty * rotz;
+
+    cout << "rot! \n" << rot.matrix() << endl;
     currentSegment->transMatrix = rot*currentSegment->transMatrix;
   } 
 }
@@ -178,13 +191,16 @@ void inverseKinematicsSolver() {
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
     numCalcs++;
     jacobian       = computeJacobian();
+    cout << "jacobian \n" << jacobian << endl;
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
+    cout << "pseudoJacobian \n" << pseudoJacobian << endl;    
     addToRots      = pseudoJacobian*(goal - endPoint);
     updateSegmentRotations(addToRots*lambda);
-    // cout << "addToRots: \n" << addToRots << endl;
+    cout << "addToRots: \n" << addToRots << endl;
     endPoint = getEndPoint(); //correct reupdating?
     newDistanceToGoal = distanceBetween(endPoint, goal);
     // cout << "newDistanceToGoal: " << newDistanceToGoal << endl;
+    cout << "endpoint " << endPoint << endl;
     // while (distanceToGoal < newDistanceToGoal) {
     //   for (int i=0; i<Segment::numSegments; i++) segments[i]->transMatrix = segments[i]->oldTransMatrix;
     if (distanceToGoal < newDistanceToGoal) lambda *= .5;
@@ -245,8 +261,8 @@ void initScene(){
   changeColor(0.75f,1.0f,0.0f);
   Segment * a = new Segment(1);
   Segment * b = new Segment(2);
-  // Segment * c = new Segment(3);
-  // Segment * d = new Segment(4);
+  // Segment * c = new Segment(.25);
+  // Segment * d = new Segment(.13);
   segments.push_back(a);
   segments.push_back(b);
   // segments.push_back(c);
@@ -322,6 +338,7 @@ void myFrameMove() {
 // #ifdef _WIN32
 //   Sleep(10);                                   //give ~10ms back to OS (so as not to waste the CPU)
 // #endif
+
 //   glutPostRedisplay(); // forces glut to call the display function (myDisplay())
 }
 
@@ -339,7 +356,7 @@ void timer(int v) {
   // goal[1] = 1;
   // goal[2] = 0;
   glutPostRedisplay();
-  glutTimerFunc(60, timer, v);
+  glutTimerFunc(120, timer, v);
 }
 
 
