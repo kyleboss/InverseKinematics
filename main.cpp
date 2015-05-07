@@ -29,7 +29,7 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .01;
-Vector3d goal                 = Vector3d(0, 3, 0);
+Vector3d goal                 = Vector3d(0, 1, 1);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -80,6 +80,8 @@ Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
 
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
     endPoint += segments[i]->transMatrix*Vector3d(segments[i]->length,0,0);
+    segments[i]->old_end = segments[i]->end;
+    segments[i]->old_jointLoc = segments[i]->jointLoc;
     segments[i]->end = endPoint;
     segments[i]->jointLoc = prevEndPoint;
     if (draw) alterColorForDebugging(i, prevEndPoint, endPoint);
@@ -147,11 +149,19 @@ void updateSegmentRotations(VectorXd addToRots) {
   Segment * currentSegment;
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
     currentSegment  = segments[i];
-    rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
-    rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
-    rot = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1))*rot;
+    rot = AngleAxisd(addToRots[3*i+0], (currentSegment->transMatrix*Vector3d(1,0,0)).normalized());
+    rot = AngleAxisd(addToRots[3*i+1], (currentSegment->transMatrix*Vector3d(0,1,0)).normalized())*rot;
+    rot = AngleAxisd(addToRots[3*i+2], (currentSegment->transMatrix*Vector3d(0,0,1)).normalized())*rot;
     currentSegment->transMatrix = rot*currentSegment->transMatrix;
   } 
+}
+
+//undoes the last thing
+void undo() {
+  for (int i = 0; i<Segment::numSegments; i++) {
+    segments[i]->end = segments[i]->old_end;
+    segments[i]->jointLoc = segments[i]->old_jointLoc;
+  }
 }
 
 //********************************************************
@@ -173,19 +183,23 @@ void inverseKinematicsSolver() {
     numCalcs++;
     if (numCalcs == 999) cout << "GRR" << endl;
     jacobian       = computeJacobian();
-    cout << "jacobian is \n" << jacobian << endl;
+    //cout << "jacobian is \n" << jacobian << endl;
     distanceToGoal = distanceBetween(endPoint, goal);
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
-    cout << "inverted jacobian is \n" << pseudoJacobian << endl;
+    //cout << "inverted jacobian is \n" << pseudoJacobian << endl;
     addToRots      = pseudoJacobian*lambda*(goal - endPoint);
+    //cout << "new rotations are " << addToRots << endl;
     updateSegmentRotations(addToRots);
     // cout << "addToRots: \n" << addToRots << endl;
-    endPoint          = getEndPoint(Segment::numSegments); //correct reupdating?
+    endPoint       = getEndPoint(Segment::numSegments); //correct reupdating?
     cout << "NEW END POINT: \n" << endPoint << endl;
 
     newDistanceToGoal = distanceBetween(endPoint, goal);
     // cout << "newDistanceToGoal: " << newDistanceToGoal << endl;
-    if (distanceToGoal < newDistanceToGoal) lambda*=.5;
+    if (distanceToGoal < newDistanceToGoal) {
+      undo();
+      lambda*=.5;
+    }
     // glLoadIdentity();
     // glBegin(GL_LINES); 
     // for (int i=0; i<Segment::numSegments; i++) {
@@ -237,26 +251,14 @@ void initScene(){
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to black, fully transparent
   changeColor(0.75f,1.0f,0.0f);
   Segment * a = new Segment(1);
-<<<<<<< HEAD
-  Segment * b = new Segment(3);
-=======
-  Segment * b = new Segment(2);
-<<<<<<< HEAD
-  Segment * c = new Segment(3);
-  Segment * d = new Segment(4);
-  segments.push_back(a);
-  segments.push_back(b);
-  segments.push_back(c);
-  segments.push_back(d);
-=======
->>>>>>> 3f26ac5092e4ba3e30fffc8110c13f1f0a2e967b
-  // Segment * c = new Segment(3);
+  Segment * b = new Segment(0.5);
+  Segment * c = new Segment(1.5);
   // Segment * d = new Segment(4);
   segments.push_back(a);
   segments.push_back(b);
-  // segments.push_back(c);
+  segments.push_back(c);
   // segments.push_back(d);
->>>>>>> origin/master
+
   myReshape(viewport.w,viewport.h);
 }
 
