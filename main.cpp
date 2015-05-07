@@ -29,8 +29,8 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .1;
-Vector3d goal                 = Vector3d(2, 0, 0);
-Vector3d realGoal                 = Vector3d(2, 0, 0);
+Vector3d goal                 = Vector3d(2, 2, 0);
+Vector3d realGoal                 = Vector3d(2, 2, 0);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -48,6 +48,13 @@ float distanceBetween(Vector3d point1, Vector3d point2) {
 //*********************************************************
 void changeColor(float r, float g, float b) {
   glColor3f(r,g,b);
+}
+
+void undo() {
+  for (int i = 0; i<Segment::numSegments; i++) {
+    segments[i]->end = segments[i]->old_end;
+    segments[i]->jointLoc = segments[i]->old_jointLoc;
+  }
 }
 
 //*********************************************************
@@ -140,15 +147,14 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 //*********************************************************
 // updateSegmentRotations
 // Updates a segment's degree of rotation given a vector
-// of rotational degree values. addToRots - 1x3n
+// of rotational values. addToRots - 1x3n
 // rotations are in degreeees
 //*********************************************************
-void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
+void updateSegmentRotations(VectorXd addToRots) {
   AngleAxisd rot;
   Segment * currentSegment;
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
     currentSegment  = segments[i];
-    if (updateOld) currentSegment->oldTransMatrix = currentSegment->transMatrix;
     rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
     rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
     rot = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1))*rot;
@@ -170,9 +176,9 @@ void inverseKinematicsSolver() {
   MatrixXd pseudoJacobian;
   VectorXd addToRots = Vector3d(0,0,0);
 
-  if (Segment::totalLength < distanceBetween(Vector3d(0,0,0), goal)) { 
-    goal = goal.normalized() * Segment::totalLength; 
-  }
+  // if (Segment::totalLength < distanceBetween(Vector3d(0,0,0), goal)) { 
+  //   goal = goal.normalized() * Segment::totalLength; 
+  // }
 
 
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
@@ -187,7 +193,10 @@ void inverseKinematicsSolver() {
     // cout << "newDistanceToGoal: " << newDistanceToGoal << endl;
     // while (distanceToGoal < newDistanceToGoal) {
     //   for (int i=0; i<Segment::numSegments; i++) segments[i]->transMatrix = segments[i]->oldTransMatrix;
-    if (distanceToGoal < newDistanceToGoal) lambda *= .5;
+    if (distanceToGoal < newDistanceToGoal) {
+      undo();
+      lambda *= .5;
+    }
     //   updateSegmentRotations(addToRots*lambda, false);
     //   endPoint = getEndPoint();
     //   newDistanceToGoal = distanceBetween(goal, endPoint);
@@ -202,6 +211,7 @@ void inverseKinematicsSolver() {
     // glEnd();
   }
 }
+
 
 
 //****************************************************
