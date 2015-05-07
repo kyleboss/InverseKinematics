@@ -148,7 +148,11 @@ void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
   Segment * currentSegment;
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
     currentSegment  = segments[i];
-    if (updateOld) currentSegment->oldTransMatrix = currentSegment->transMatrix;
+    if (updateOld) {
+      currentSegment->oldTransMatrix = currentSegment->transMatrix;
+      currentSegment->oldLoc = currentSegment->jointLoc;
+      currentSegment->oldEnd = currentSegment->end;
+    }
     rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
     rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
     rot = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1))*rot;
@@ -170,9 +174,9 @@ void inverseKinematicsSolver() {
   MatrixXd pseudoJacobian;
   VectorXd addToRots = Vector3d(0,0,0);
 
-  if (Segment::totalLength < distanceBetween(Vector3d(0,0,0), goal)) { 
-    goal = goal.normalized() * Segment::totalLength; 
-  }
+  // if (Segment::totalLength < distanceBetween(Vector3d(0,0,0), goal)) { 
+  //   goal = goal.normalized() * Segment::totalLength; 
+  // }
 
 
   while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
@@ -185,13 +189,10 @@ void inverseKinematicsSolver() {
     endPoint = getEndPoint(); //correct reupdating?
     newDistanceToGoal = distanceBetween(endPoint, goal);
     // cout << "newDistanceToGoal: " << newDistanceToGoal << endl;
-    // while (distanceToGoal < newDistanceToGoal) {
-    //   for (int i=0; i<Segment::numSegments; i++) segments[i]->transMatrix = segments[i]->oldTransMatrix;
-    if (distanceToGoal < newDistanceToGoal) lambda *= .5;
-    //   updateSegmentRotations(addToRots*lambda, false);
-    //   endPoint = getEndPoint();
-    //   newDistanceToGoal = distanceBetween(goal, endPoint);
-    // }
+    if (distanceToGoal < newDistanceToGoal) {
+      for (int i=0; i<Segment::numSegments; i++) segments[i]->transMatrix = segments[i]->oldTransMatrix;
+      lambda *= .5;
+    }
     distanceToGoal = distanceBetween(endPoint, goal);
     // glLoadIdentity();
     // glBegin(GL_LINES); 
