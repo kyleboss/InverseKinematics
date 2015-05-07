@@ -29,13 +29,8 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .1;
-<<<<<<< HEAD
-Vector3d goal                 = Vector3d(0, 2, 1);
-Vector3d realGoal                 = Vector3d(0, 2, 1);
-=======
 Vector3d goal                 = Vector3d(2, 0, 0);
 Vector3d realGoal                 = Vector3d(2, 0, 0);
->>>>>>> origin/master
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -156,7 +151,6 @@ void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
   Segment * currentSegment;
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
     currentSegment  = segments[i];
-<<<<<<< HEAD
     if (updateOld) {
       currentSegment->oldTransMatrix = currentSegment->transMatrix;
       currentSegment->oldLoc = currentSegment->jointLoc;
@@ -165,22 +159,6 @@ void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
     rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
     rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
     rot = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1))*rot;
-=======
-    if (updateOld) currentSegment->oldTransMatrix = currentSegment->transMatrix;
-    rotx = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
-    roty = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0));
-    rotz = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1));
-    // rot = AngleAxisd(addToRots[3*i+0] * PI / 180, (currentSegment->transMatrix*Vector3d(1,0,0)).normalized());
-    // rot = AngleAxisd(addToRots[3*i+1] * PI / 180, (currentSegment->transMatrix*Vector3d(0,1,0)).normalized())*rot;
-    // rot = AngleAxisd(addToRots[3*i+2] * PI / 180, (currentSegment->transMatrix*Vector3d(0,0,1)).normalized())*rot;
-        cout << "rot! x \n" << rotx.matrix() << endl;
-    cout << "rot! y \n" << roty.matrix() << endl;
-    cout << "rot! z\n" << rotz.matrix() << endl;
-
-    rot = rotx * roty * rotz;
-
-    cout << "rot! \n" << rot.matrix() << endl;
->>>>>>> 9d1fa66407d6104f194d84b1722dad97873ae0f7
     currentSegment->transMatrix = rot*currentSegment->transMatrix;
   } 
 }
