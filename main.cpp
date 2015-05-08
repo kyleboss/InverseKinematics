@@ -29,8 +29,12 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .1;
+<<<<<<< HEAD
 Vector3d goal                 = Vector3d(1, 1, .9);
 Vector3d realGoal                 = Vector3d(1, 1, .9);
+=======
+Vector3d goal                 = Vector3d(2, 2, 0);
+>>>>>>> eb7e12581fe65900be06cde269a658e368e3e802
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -75,14 +79,18 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
 // is provided, it will return the end-point of the segment
 // farthest away from the root. 
 //*********************************************************
-Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
+Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false, bool test = false) {
   Vector3d endPoint = Vector3d(0,0,0);
   Vector3d prevEndPoint = Vector3d(0,0,0);
 
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
-    endPoint += segments[i]->transMatrix*Vector3d(segments[i]->length,0,0);
-    segments[i]->end = endPoint;
-    segments[i]->jointLoc = prevEndPoint;
+    if (!test) {
+      endPoint += segments[i]->transMatrix*Vector3d(segments[i]->length,0,0);
+      segments[i]->end = endPoint;
+      segments[i]->jointLoc = prevEndPoint;
+    } else {
+      endPoint += segments[i]->testMatrix*Vector3d(segments[i]->length,0,0);
+    }
     if (draw) alterColorForDebugging(i, prevEndPoint, endPoint);
     prevEndPoint = endPoint;
   }
@@ -140,10 +148,10 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 //*********************************************************
 // updateSegmentRotations
 // Updates a segment's degree of rotation given a vector
-// of rotational degree values. addToRots - 1x3n
+// of rotational values. addToRots - 1x3n
 // rotations are in degreeees
 //*********************************************************
-void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
+void updateSegmentRotations(VectorXd addToRots, bool test=false) {
   AngleAxisd rotx;
   AngleAxisd roty;
   AngleAxisd rotz;
@@ -151,15 +159,22 @@ void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
   Segment * currentSegment;
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
     currentSegment  = segments[i];
+<<<<<<< HEAD
     if (updateOld) {
       currentSegment->oldTransMatrix = currentSegment->transMatrix;
       // currentSegment->oldLoc = currentSegment->jointLoc;
       // currentSegment->oldEnd = currentSegment->end;
     }
+=======
+>>>>>>> eb7e12581fe65900be06cde269a658e368e3e802
     rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
     rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
     rot = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1))*rot;
-    currentSegment->transMatrix = rot*currentSegment->transMatrix;
+    if (!test) {
+      currentSegment->transMatrix = rot*currentSegment->transMatrix;
+    } else {
+      currentSegment->testMatrix = rot*currentSegment->transMatrix;
+    }
   } 
 }
 
@@ -210,12 +225,14 @@ void inverseKinematicsSolver() {
     //   lambda *= .5;
     // } else {
     //   lambda = 1;
+
     // }
     endPoint = getEndPoint();
     distanceToGoal = distanceBetween(endPoint, goal);
   }
   getEndPoint(Segment::numSegments, true);
 }
+
 
 
 //****************************************************
@@ -317,7 +334,7 @@ void myDisplay() {
   glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, white);
   glBegin(GL_POINTS);
   // glVertex3d(0,0,0);
-  glVertex3f(realGoal[0], realGoal[1], realGoal[2]);
+  glVertex3f(goal[0], goal[1], goal[2]);
   glEnd();
   inverseKinematicsSolver();
 
@@ -346,7 +363,7 @@ void timer(int v) {
   goal[1] = sin(timeCount)+0;
   realGoal[1] = sin(timeCount)+0;
   goal[1] = .5*(cos(timeCount))+1;
-  realGoal[1] = .5*(cos(timeCount))+1;
+  // realGoal[1] = .5*(cos(timeCount))+1;
   // goal[2] = sin(timeCount)+0;
   // realGoal[1] = .5*(cos(timeCount))+1;
   // goal[0] = 0;
