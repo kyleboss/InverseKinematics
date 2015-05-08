@@ -27,13 +27,21 @@ using namespace std;
 
 Segment * youngestSeg;
 Segment * rootSeg;
+int lookX = 5;
+int lookY = 2;
+
 int timeCount = 0;
 float acceptableDistance      = .1;
+<<<<<<< HEAD
 <<<<<<< HEAD
 Vector3d goal                 = Vector3d(0, 10, 0);
 Vector3d realGoal                 = Vector3d(0, 10, 0);
 =======
 Vector3d goal                 = Vector3d(2, 2, 0);
+>>>>>>> origin/master
+=======
+Vector3d goal                 = Vector3d(0, 1, 1);
+Vector3d realGoal                 = Vector3d(0, 1, 1);
 >>>>>>> origin/master
 
 std::vector<Segment *> segments = std::vector<Segment *>();
@@ -62,11 +70,19 @@ void changeColor(float r, float g, float b) {
 void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
   glPointSize(6);
   glLineWidth(6);
+  GLfloat red[] = {1.0,0,0};
+  GLfloat orange[] = {1.0,0.4,0};
+  GLfloat yellow[] = {1.0,1.0,0};
+  GLfloat green[] = {0,1.0,0};
+  GLfloat blue[] = {0,0,1.0};
+  GLfloat indigo[] = {0.3,0,0.5};
+  GLfloat violet[] = {1.0,0,1.0};
+  GLfloat white[] = {1.0,1.0,1.0};
+  if (i==0) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, red);
+  if (i==1) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, green);
+  if (i==2) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, yellow);
+  if (i==3) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, orange);
   glBegin(GL_LINES);
-  if (i==0) glColor3d(1,0,0);
-  if (i==1) glColor3d(0,1,0);
-  if (i==2) glColor3d(0,0,1);
-  if (i==3) glColor3d(1,0,1);
   glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
   glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
   glEnd();
@@ -79,17 +95,19 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
 // is provided, it will return the end-point of the segment
 // farthest away from the root. 
 //*********************************************************
-Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false, bool test = false) {
+Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
   Vector3d endPoint = Vector3d(0,0,0);
   Vector3d prevEndPoint = Vector3d(0,0,0);
 
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
-    if (!test) {
-      endPoint += segments[i]->transMatrix*Vector3d(segments[i]->length,0,0);
+    endPoint += segments[i]->transMatrix*Vector3d(segments[i]->length,0,0);
+    if (endPoint[0] != segments[i]->end[0] || endPoint[1] != segments[i]->end[1] || endPoint[2] != segments[i]->end[2]) {
+      segments[i]->oldEnd = segments[i]->end;
       segments[i]->end = endPoint;
+    }
+    if (prevEndPoint[0] != segments[i]->jointLoc[0] || prevEndPoint[1] != segments[i]->jointLoc[1] || prevEndPoint[2] != segments[i]->jointLoc[2]) {
+      segments[i]->oldLoc = segments[i]->jointLoc;
       segments[i]->jointLoc = prevEndPoint;
-    } else {
-      endPoint += segments[i]->testMatrix*Vector3d(segments[i]->length,0,0);
     }
     if (draw) alterColorForDebugging(i, prevEndPoint, endPoint);
     prevEndPoint = endPoint;
@@ -152,7 +170,7 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 // of rotational values. addToRots - 1x3n
 // rotations are in degreeees
 //*********************************************************
-void updateSegmentRotations(VectorXd addToRots, bool test=false) {
+void updateSegmentRotations(VectorXd addToRots, bool updateOld=false) {
   AngleAxisd rotx;
   AngleAxisd roty;
   AngleAxisd rotz;
@@ -160,14 +178,13 @@ void updateSegmentRotations(VectorXd addToRots, bool test=false) {
   Segment * currentSegment;
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
     currentSegment  = segments[i];
+    if (updateOld) {
+      currentSegment->oldTransMatrix = currentSegment->transMatrix;
+    }
     rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
     rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
     rot = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1))*rot;
-    if (!test) {
-      currentSegment->transMatrix = rot*currentSegment->transMatrix;
-    } else {
-      currentSegment->testMatrix = rot*currentSegment->transMatrix;
-    }
+    currentSegment->transMatrix = rot*currentSegment->transMatrix;
   } 
 }
 
@@ -180,21 +197,28 @@ void inverseKinematicsSolver() {
   float distanceToGoal      = distanceBetween(endPoint, goal);
   double lambda             = 1;
   int numCalcs              = 0;
-  float newDistanceToGoal;
+  float newDistanceToGoal   = 0;
   MatrixXd jacobian;
   MatrixXd pseudoJacobian;
   VectorXd addToRots = Vector3d(0,0,0);
 
-  // if (Segment::totalLength < distanceBetween(Vector3d(0,0,0), goal)) { 
-  //   goal = goal.normalized() * Segment::totalLength; 
-  // }
+  if (Segment::totalLength < distanceBetween(Vector3d(0,0,0), realGoal)) { 
+    goal = realGoal.normalized() * Segment::totalLength; 
+    glLineWidth(6);
+    glBegin(GL_LINES);
+    glVertex3d(0,0,0);
+    glVertex3d(goal[0], goal[1], goal[2]);
+    glEnd();
+    return;
+  }
 
 
-  while (distanceToGoal > acceptableDistance && numCalcs < 10*Segment::numSegments) {
+  while (distanceToGoal > acceptableDistance && numCalcs < 100*Segment::numSegments && lambda > 0.01) {
     numCalcs++;
     jacobian       = computeJacobian();
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
     addToRots      = pseudoJacobian*(goal - endPoint);
+<<<<<<< HEAD
 <<<<<<< HEAD
     distanceToGoal = distanceBetween(endPoint, goal);
     updateSegmentRotations(addToRots*lambda);
@@ -235,7 +259,25 @@ void inverseKinematicsSolver() {
     //   glVertex3d(segments[i]->end[0], segments[i]->end[1], segments[i]->end[2]);
     // }
     // glEnd();
+=======
+    endPoint = getEndPoint();
+    distanceToGoal = distanceBetween(endPoint, goal);
+    updateSegmentRotations(addToRots*lambda, true);
+    endPoint = getEndPoint(); //correct reupdating?
+
+    if (distanceToGoal < newDistanceToGoal) {
+      for (int i=0; i<Segment::numSegments; i++) {
+        segments[i]->end = segments[i]->oldEnd;
+        segments[i]->jointLoc = segments[i]->oldLoc;
+        segments[i]->transMatrix = segments[i]->oldTransMatrix;
+      }
+      lambda *= .5;
+    } else {
+      lambda = 1;
+    }
+>>>>>>> origin/master
   }
+  getEndPoint(Segment::numSegments, true);
 }
 
 
@@ -278,11 +320,18 @@ void initScene(){
   glEnable(GL_LIGHTING);
   glEnable(GL_LIGHT0);
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to black, fully transparent
+<<<<<<< HEAD
   changeColor(0.75f,1.0f,0.0f);
   Segment * a = new Segment(1);
   Segment * b = new Segment(2);
   Segment * c = new Segment(3);
   Segment * d = new Segment(4);
+=======
+  Segment * a = new Segment(.5);
+  Segment * b = new Segment(1);
+  Segment * c = new Segment(1.5);
+  Segment * d = new Segment(2);
+>>>>>>> origin/master
   segments.push_back(a);
   segments.push_back(b);
   segments.push_back(c);
@@ -297,6 +346,23 @@ void handle(unsigned char key, int x, int y) {
       break;
   }
   glutPostRedisplay();
+}
+
+void keySpecial (int key, int x, int y) {
+  switch(key) {
+    case GLUT_KEY_LEFT:
+      lookX--;
+      break;
+    case GLUT_KEY_RIGHT:
+      lookX++;
+      break;
+    case GLUT_KEY_UP:
+      lookY++;
+      break;
+    case GLUT_KEY_DOWN:
+      lookY--;
+      break;
+  }
 }
 
 //***************************************************
@@ -317,7 +383,7 @@ void myDisplay() {
   GLfloat white[] = {1.0,1.0,1.0};
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
-  gluLookAt(5, 2, 8,
+  gluLookAt(lookX, lookY, 8,
             0, 0, 0,
             0.0, 1.0, 0.0);
   GLfloat lightPosition[] = {0, 2, 0, 1};
@@ -339,10 +405,9 @@ void myDisplay() {
   glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, white);
   glBegin(GL_POINTS);
   // glVertex3d(0,0,0);
-  glVertex3f(goal[0], goal[1], goal[2]);
+  glVertex3f(realGoal[0], realGoal[1], realGoal[2]);
   glEnd();
   inverseKinematicsSolver();
-  getEndPoint(Segment::numSegments, true);
 
   //-----------------------------------------------------------------------
 
@@ -366,6 +431,7 @@ void myFrameMove() {
 void timer(int v) {
   glLoadIdentity();
   timeCount++;
+<<<<<<< HEAD
   // goal[1] = sin(timeCount)+0;
   // realGoal[1] = sin(timeCount)+0;
 <<<<<<< HEAD
@@ -379,8 +445,17 @@ void timer(int v) {
   // goal[0] = 0;
   // goal[1] = 1;
   // goal[2] = 0;
+=======
+  goal[0] = .2*sin(timeCount)+0;
+  realGoal[0] = .2*sin(timeCount)+0;
+  // goal[1] = 5*(cos(timeCount))+1;
+  // realGoal[1] = 5*(cos(timeCount))+1;
+  // goal[2] = 5*sin(timeCount)+0;
+  // realGoal[2] = 5*sin(timeCount)+0;
+
+>>>>>>> origin/master
   glutPostRedisplay();
-  glutTimerFunc(120, timer, v);
+  glutTimerFunc(500, timer, v);
 }
 
 
@@ -400,9 +475,10 @@ int main(int argc, char *argv[]) {
   glutInitWindowSize(viewport.w, viewport.h);
   glutInitWindowPosition(0, 0);
   glutCreateWindow("CS184!");
-  glutTimerFunc(100, timer, 0);
+  glutTimerFunc(500, timer, 0);
   initScene();                                 // quick function to set up scene
   glutKeyboardFunc(handle); //exit on space
+  glutSpecialFunc(keySpecial);
 
   glutDisplayFunc(myDisplay);                  // function to run when its time to draw something
   glutReshapeFunc(myReshape);                  // function to run when the window gets resized
