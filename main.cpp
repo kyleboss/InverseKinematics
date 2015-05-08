@@ -29,8 +29,12 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .1;
+<<<<<<< HEAD
 Vector3d goal                 = Vector3d(0, 10, 0);
 Vector3d realGoal                 = Vector3d(0, 10, 0);
+=======
+Vector3d goal                 = Vector3d(2, 2, 0);
+>>>>>>> origin/master
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -75,14 +79,18 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
 // is provided, it will return the end-point of the segment
 // farthest away from the root. 
 //*********************************************************
-Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
+Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false, bool test = false) {
   Vector3d endPoint = Vector3d(0,0,0);
   Vector3d prevEndPoint = Vector3d(0,0,0);
 
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
-    endPoint += segments[i]->transMatrix*Vector3d(segments[i]->length,0,0);
-    segments[i]->end = endPoint;
-    segments[i]->jointLoc = prevEndPoint;
+    if (!test) {
+      endPoint += segments[i]->transMatrix*Vector3d(segments[i]->length,0,0);
+      segments[i]->end = endPoint;
+      segments[i]->jointLoc = prevEndPoint;
+    } else {
+      endPoint += segments[i]->testMatrix*Vector3d(segments[i]->length,0,0);
+    }
     if (draw) alterColorForDebugging(i, prevEndPoint, endPoint);
     prevEndPoint = endPoint;
   }
@@ -141,10 +149,10 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 //*********************************************************
 // updateSegmentRotations
 // Updates a segment's degree of rotation given a vector
-// of rotational degree values. addToRots - 1x3n
+// of rotational values. addToRots - 1x3n
 // rotations are in degreeees
 //*********************************************************
-void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
+void updateSegmentRotations(VectorXd addToRots, bool test=false) {
   AngleAxisd rotx;
   AngleAxisd roty;
   AngleAxisd rotz;
@@ -152,15 +160,14 @@ void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
   Segment * currentSegment;
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
     currentSegment  = segments[i];
-    if (updateOld) {
-      currentSegment->oldTransMatrix = currentSegment->transMatrix;
-      currentSegment->oldLoc = currentSegment->jointLoc;
-      currentSegment->oldEnd = currentSegment->end;
-    }
     rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
     rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
     rot = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1))*rot;
-    currentSegment->transMatrix = rot*currentSegment->transMatrix;
+    if (!test) {
+      currentSegment->transMatrix = rot*currentSegment->transMatrix;
+    } else {
+      currentSegment->testMatrix = rot*currentSegment->transMatrix;
+    }
   } 
 }
 
@@ -183,13 +190,12 @@ void inverseKinematicsSolver() {
   // }
 
 
-  while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
+  while (distanceToGoal > acceptableDistance && numCalcs < 10*Segment::numSegments) {
     numCalcs++;
     jacobian       = computeJacobian();
-    cout << "jacobian \n" << jacobian << endl;
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
-    cout << "pseudoJacobian \n" << pseudoJacobian << endl;    
     addToRots      = pseudoJacobian*(goal - endPoint);
+<<<<<<< HEAD
     distanceToGoal = distanceBetween(endPoint, goal);
     updateSegmentRotations(addToRots*lambda);
     // cout << "addToRots: \n" << addToRots << endl;
@@ -199,12 +205,29 @@ void inverseKinematicsSolver() {
     if (distanceToGoal < newDistanceToGoal) {
       cout << "bad: we're further at endpoint " << endPoint << "when the goal is " << goal;
       for (int i=0; i<Segment::numSegments; i++) segments[i]->transMatrix = segments[i]->oldTransMatrix;
+=======
+    updateSegmentRotations(addToRots*lambda, true);
+    endPoint = getEndPoint(Segment::numSegments, false, true); //correct reupdating?
+    newDistanceToGoal = distanceBetween(endPoint, goal);
+    // cout << "newDistanceToGoal: " << newDistanceToGoal << endl;
+    if (distanceToGoal > newDistanceToGoal) {
+      lambda = 1;
+      updateSegmentRotations(addToRots*lambda);
+      endPoint = getEndPoint();
+      newDistanceToGoal = distanceBetween(endPoint, goal);
+    } else {
+>>>>>>> origin/master
       lambda *= .5;
       cout << "jacobian \n" << jacobian << endl;
       updateSegmentRotations(addToRots*lambda);
 
     }
+<<<<<<< HEAD
 
+=======
+    endPoint = getEndPoint(Segment::numSegments, true);
+    distanceToGoal = distanceBetween(endPoint, goal);
+>>>>>>> origin/master
     // glLoadIdentity();
     // glBegin(GL_LINES); 
     // for (int i=0; i<Segment::numSegments; i++) {
@@ -214,6 +237,7 @@ void inverseKinematicsSolver() {
     // glEnd();
   }
 }
+
 
 
 //****************************************************
@@ -315,7 +339,7 @@ void myDisplay() {
   glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, white);
   glBegin(GL_POINTS);
   // glVertex3d(0,0,0);
-  glVertex3f(realGoal[0], realGoal[1], realGoal[2]);
+  glVertex3f(goal[0], goal[1], goal[2]);
   glEnd();
   inverseKinematicsSolver();
   getEndPoint(Segment::numSegments, true);
@@ -344,7 +368,11 @@ void timer(int v) {
   timeCount++;
   // goal[1] = sin(timeCount)+0;
   // realGoal[1] = sin(timeCount)+0;
+<<<<<<< HEAD
   // goal[1] = .5*(cos(timeCount))+1;
+=======
+  goal[1] = .5*(cos(timeCount))+1;
+>>>>>>> origin/master
   // realGoal[1] = .5*(cos(timeCount))+1;
   // goal[2] = sin(timeCount)+0;
   // realGoal[1] = .5*(cos(timeCount))+1;
