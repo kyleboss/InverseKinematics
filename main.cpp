@@ -32,8 +32,8 @@ int lookY = 2;
 
 int timeCount = 0;
 float acceptableDistance      = .1;
-Vector3d goal                 = Vector3d(0, 1.1, 0);
-Vector3d realGoal                 = Vector3d(0, 1.1, 0);
+Vector3d goal                 = Vector3d(0, 1, 1);
+Vector3d realGoal                 = Vector3d(0, 1, 1);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -61,11 +61,19 @@ void changeColor(float r, float g, float b) {
 void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
   glPointSize(6);
   glLineWidth(6);
+  GLfloat red[] = {1.0,0,0};
+  GLfloat orange[] = {1.0,0.4,0};
+  GLfloat yellow[] = {1.0,1.0,0};
+  GLfloat green[] = {0,1.0,0};
+  GLfloat blue[] = {0,0,1.0};
+  GLfloat indigo[] = {0.3,0,0.5};
+  GLfloat violet[] = {1.0,0,1.0};
+  GLfloat white[] = {1.0,1.0,1.0};
+  if (i==0) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, red);
+  if (i==1) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, green);
+  if (i==2) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, yellow);
+  if (i==3) glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, orange);
   glBegin(GL_LINES);
-  if (i==0) glColor3d(1,0,0);
-  if (i==1) glColor3d(0,1,0);
-  if (i==2) glColor3d(0,0,1);
-  if (i==3) glColor3d(1,0,1);
   glVertex3d(prevEndPoint[0], prevEndPoint[1], prevEndPoint[2]);
   glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
   glEnd();
@@ -179,7 +187,7 @@ void inverseKinematicsSolver() {
   float distanceToGoal      = distanceBetween(endPoint, goal);
   double lambda             = 1;
   int numCalcs              = 0;
-  float newDistanceToGoal;
+  float newDistanceToGoal   = 0;
   MatrixXd jacobian;
   MatrixXd pseudoJacobian;
   VectorXd addToRots = Vector3d(0,0,0);
@@ -204,6 +212,17 @@ void inverseKinematicsSolver() {
     distanceToGoal = distanceBetween(endPoint, goal);
     updateSegmentRotations(addToRots*lambda, true);
     endPoint = getEndPoint(); //correct reupdating?
+
+    if (distanceToGoal < newDistanceToGoal) {
+      for (int i=0; i<Segment::numSegments; i++) {
+        segments[i]->end = segments[i]->oldEnd;
+        segments[i]->jointLoc = segments[i]->oldLoc;
+        segments[i]->transMatrix = segments[i]->oldTransMatrix;
+      }
+      lambda *= .5;
+    } else {
+      lambda = 1;
+    }
   }
   getEndPoint(Segment::numSegments, true);
 }
@@ -248,15 +267,14 @@ void initScene(){
   glEnable(GL_LIGHTING);
   glEnable(GL_LIGHT0);
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Clear to black, fully transparent
-  changeColor(0.75f,1.0f,0.0f);
-  Segment * a = new Segment(1);
+  Segment * a = new Segment(.5);
   Segment * b = new Segment(1);
-  // Segment * c = new Segment(3);
-  // Segment * d = new Segment(4);
+  Segment * c = new Segment(1.5);
+  Segment * d = new Segment(2);
   segments.push_back(a);
   segments.push_back(b);
-  // segments.push_back(c);
-  // segments.push_back(d);
+  segments.push_back(c);
+  segments.push_back(d);
   myReshape(viewport.w,viewport.h);
 }
 
@@ -352,15 +370,15 @@ void myFrameMove() {
 void timer(int v) {
   glLoadIdentity();
   timeCount++;
-  goal[0] = 3*sin(timeCount)+0;
-  realGoal[0] = 3*sin(timeCount)+0;
-  goal[1] = .5*(cos(timeCount))+1;
-  realGoal[1] = .5*(cos(timeCount))+1;
-  goal[2] = sin(timeCount)+0;
-  realGoal[2] = sin(timeCount)+0;
+  goal[0] = .2*sin(timeCount)+0;
+  realGoal[0] = .2*sin(timeCount)+0;
+  // goal[1] = 5*(cos(timeCount))+1;
+  // realGoal[1] = 5*(cos(timeCount))+1;
+  // goal[2] = 5*sin(timeCount)+0;
+  // realGoal[2] = 5*sin(timeCount)+0;
 
   glutPostRedisplay();
-  glutTimerFunc(120, timer, v);
+  glutTimerFunc(500, timer, v);
 }
 
 
@@ -380,7 +398,7 @@ int main(int argc, char *argv[]) {
   glutInitWindowSize(viewport.w, viewport.h);
   glutInitWindowPosition(0, 0);
   glutCreateWindow("CS184!");
-  glutTimerFunc(100, timer, 0);
+  glutTimerFunc(500, timer, 0);
   initScene();                                 // quick function to set up scene
   glutKeyboardFunc(handle); //exit on space
   glutSpecialFunc(keySpecial);

@@ -22,7 +22,7 @@ class Segment {
     Eigen::Matrix<double,3,3> oldTransMatrix;
     float length;
     static int numSegments;
-    static int totalLength;
+    static float totalLength;
 };
 int Segment::numSegments = 0;
-int Segment::totalLength = 0;
+float Segment::totalLength = 0;
