@@ -27,14 +27,13 @@ using namespace std;
 
 Segment * youngestSeg;
 Segment * rootSeg;
+int lookX = 5;
+int lookY = 2;
+
 int timeCount = 0;
 float acceptableDistance      = .1;
-<<<<<<< HEAD
-Vector3d goal                 = Vector3d(1, 1, .9);
-Vector3d realGoal                 = Vector3d(1, 1, .9);
-=======
-Vector3d goal                 = Vector3d(2, 2, 0);
->>>>>>> eb7e12581fe65900be06cde269a658e368e3e802
+Vector3d goal                 = Vector3d(0, 1.1, 0);
+Vector3d realGoal                 = Vector3d(0, 1.1, 0);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -79,17 +78,19 @@ void alterColorForDebugging(int i, Vector3d prevEndPoint, Vector3d endPoint) {
 // is provided, it will return the end-point of the segment
 // farthest away from the root. 
 //*********************************************************
-Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false, bool test = false) {
+Vector3d getEndPoint(int index = Segment::numSegments, bool draw = false) {
   Vector3d endPoint = Vector3d(0,0,0);
   Vector3d prevEndPoint = Vector3d(0,0,0);
 
   for (int i = 0; i<index && i<Segment::numSegments; i++) {
-    if (!test) {
-      endPoint += segments[i]->transMatrix*Vector3d(segments[i]->length,0,0);
+    endPoint += segments[i]->transMatrix*Vector3d(segments[i]->length,0,0);
+    if (endPoint[0] != segments[i]->end[0] || endPoint[1] != segments[i]->end[1] || endPoint[2] != segments[i]->end[2]) {
+      segments[i]->oldEnd = segments[i]->end;
       segments[i]->end = endPoint;
+    }
+    if (prevEndPoint[0] != segments[i]->jointLoc[0] || prevEndPoint[1] != segments[i]->jointLoc[1] || prevEndPoint[2] != segments[i]->jointLoc[2]) {
+      segments[i]->oldLoc = segments[i]->jointLoc;
       segments[i]->jointLoc = prevEndPoint;
-    } else {
-      endPoint += segments[i]->testMatrix*Vector3d(segments[i]->length,0,0);
     }
     if (draw) alterColorForDebugging(i, prevEndPoint, endPoint);
     prevEndPoint = endPoint;
@@ -151,7 +152,7 @@ MatrixXd computePseudoInverse(MatrixXd originalMatrix, Vector3d goal, Vector3d e
 // of rotational values. addToRots - 1x3n
 // rotations are in degreeees
 //*********************************************************
-void updateSegmentRotations(VectorXd addToRots, bool test=false) {
+void updateSegmentRotations(VectorXd addToRots, bool updateOld=false) {
   AngleAxisd rotx;
   AngleAxisd roty;
   AngleAxisd rotz;
@@ -159,22 +160,13 @@ void updateSegmentRotations(VectorXd addToRots, bool test=false) {
   Segment * currentSegment;
   for (int i = 0; i<Segment::numSegments; i++) { //x, y, z
     currentSegment  = segments[i];
-<<<<<<< HEAD
     if (updateOld) {
       currentSegment->oldTransMatrix = currentSegment->transMatrix;
-      // currentSegment->oldLoc = currentSegment->jointLoc;
-      // currentSegment->oldEnd = currentSegment->end;
     }
-=======
->>>>>>> eb7e12581fe65900be06cde269a658e368e3e802
     rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
     rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
     rot = AngleAxisd(addToRots[3*i+2], currentSegment->transMatrix*Vector3d(0,0,1))*rot;
-    if (!test) {
-      currentSegment->transMatrix = rot*currentSegment->transMatrix;
-    } else {
-      currentSegment->testMatrix = rot*currentSegment->transMatrix;
-    }
+    currentSegment->transMatrix = rot*currentSegment->transMatrix;
   } 
 }
 
@@ -183,11 +175,6 @@ void updateSegmentRotations(VectorXd addToRots, bool test=false) {
 // Solves the Inverse Kinematics Problem.
 //*********************************************************
 void inverseKinematicsSolver() {
-  segments.clear();
-  Segment::numSegments = 0;
-  Segment::totalLength = 0;
-  segments.push_back(new Segment(1));
-  segments.push_back(new Segment(1));
   Vector3d endPoint         = getEndPoint();
   float distanceToGoal      = distanceBetween(endPoint, goal);
   double lambda             = 1;
@@ -199,14 +186,13 @@ void inverseKinematicsSolver() {
 
   if (Segment::totalLength < distanceBetween(Vector3d(0,0,0), realGoal)) { 
     goal = realGoal.normalized() * Segment::totalLength; 
-    cout << "TO BID" << endl;
+    glLineWidth(6);
     glBegin(GL_LINES);
     glVertex3d(0,0,0);
     glVertex3d(goal[0], goal[1], goal[2]);
     glEnd();
     return;
   }
-  cout << "BANG" << endl;
 
 
   while (distanceToGoal > acceptableDistance && numCalcs < 100*Segment::numSegments && lambda > 0.01) {
@@ -214,21 +200,10 @@ void inverseKinematicsSolver() {
     jacobian       = computeJacobian();
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
     addToRots      = pseudoJacobian*(goal - endPoint);
-    updateSegmentRotations(addToRots*lambda);
-    endPoint = getEndPoint(); //correct reupdating?
-    newDistanceToGoal = distanceBetween(endPoint, goal);
-
-    // if (distanceToGoal < newDistanceToGoal) {
-    //   for (int i=0; i<Segment::numSegments; i++) {
-    //     segments[i]->transMatrix = segments[i]->oldTransMatrix;
-    //   }
-    //   lambda *= .5;
-    // } else {
-    //   lambda = 1;
-
-    // }
     endPoint = getEndPoint();
     distanceToGoal = distanceBetween(endPoint, goal);
+    updateSegmentRotations(addToRots*lambda, true);
+    endPoint = getEndPoint(); //correct reupdating?
   }
   getEndPoint(Segment::numSegments, true);
 }
@@ -294,6 +269,23 @@ void handle(unsigned char key, int x, int y) {
   glutPostRedisplay();
 }
 
+void keySpecial (int key, int x, int y) {
+  switch(key) {
+    case GLUT_KEY_LEFT:
+      lookX--;
+      break;
+    case GLUT_KEY_RIGHT:
+      lookX++;
+      break;
+    case GLUT_KEY_UP:
+      lookY++;
+      break;
+    case GLUT_KEY_DOWN:
+      lookY--;
+      break;
+  }
+}
+
 //***************************************************
 // function that does the actual drawing
 //***************************************************
@@ -312,7 +304,7 @@ void myDisplay() {
   GLfloat white[] = {1.0,1.0,1.0};
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
-  gluLookAt(5, 2, 8,
+  gluLookAt(lookX, lookY, 8,
             0, 0, 0,
             0.0, 1.0, 0.0);
   GLfloat lightPosition[] = {0, 2, 0, 1};
@@ -334,7 +326,7 @@ void myDisplay() {
   glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, white);
   glBegin(GL_POINTS);
   // glVertex3d(0,0,0);
-  glVertex3f(goal[0], goal[1], goal[2]);
+  glVertex3f(realGoal[0], realGoal[1], realGoal[2]);
   glEnd();
   inverseKinematicsSolver();
 
@@ -360,15 +352,13 @@ void myFrameMove() {
 void timer(int v) {
   glLoadIdentity();
   timeCount++;
-  goal[1] = sin(timeCount)+0;
-  realGoal[1] = sin(timeCount)+0;
+  goal[0] = 3*sin(timeCount)+0;
+  realGoal[0] = 3*sin(timeCount)+0;
   goal[1] = .5*(cos(timeCount))+1;
-  // realGoal[1] = .5*(cos(timeCount))+1;
-  // goal[2] = sin(timeCount)+0;
-  // realGoal[1] = .5*(cos(timeCount))+1;
-  // goal[0] = 0;
-  // goal[1] = 1;
-  // goal[2] = 0;
+  realGoal[1] = .5*(cos(timeCount))+1;
+  goal[2] = sin(timeCount)+0;
+  realGoal[2] = sin(timeCount)+0;
+
   glutPostRedisplay();
   glutTimerFunc(120, timer, v);
 }
@@ -393,6 +383,7 @@ int main(int argc, char *argv[]) {
   glutTimerFunc(100, timer, 0);
   initScene();                                 // quick function to set up scene
   glutKeyboardFunc(handle); //exit on space
+  glutSpecialFunc(keySpecial);
 
   glutDisplayFunc(myDisplay);                  // function to run when its time to draw something
   glutReshapeFunc(myReshape);                  // function to run when the window gets resized
