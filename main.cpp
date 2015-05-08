@@ -29,8 +29,8 @@ Segment * youngestSeg;
 Segment * rootSeg;
 int timeCount = 0;
 float acceptableDistance      = .1;
-Vector3d goal                 = Vector3d(2, 0, 0);
-Vector3d realGoal                 = Vector3d(2, 0, 0);
+Vector3d goal                 = Vector3d(1, 1, .9);
+Vector3d realGoal                 = Vector3d(1, 1, .9);
 
 std::vector<Segment *> segments = std::vector<Segment *>();
 
@@ -153,8 +153,8 @@ void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
     currentSegment  = segments[i];
     if (updateOld) {
       currentSegment->oldTransMatrix = currentSegment->transMatrix;
-      currentSegment->oldLoc = currentSegment->jointLoc;
-      currentSegment->oldEnd = currentSegment->end;
+      // currentSegment->oldLoc = currentSegment->jointLoc;
+      // currentSegment->oldEnd = currentSegment->end;
     }
     rot = AngleAxisd(addToRots[3*i+0], currentSegment->transMatrix*Vector3d(1,0,0));
     rot = AngleAxisd(addToRots[3*i+1], currentSegment->transMatrix*Vector3d(0,1,0))*rot;
@@ -168,6 +168,11 @@ void updateSegmentRotations(VectorXd addToRots, bool updateOld = true) {
 // Solves the Inverse Kinematics Problem.
 //*********************************************************
 void inverseKinematicsSolver() {
+  segments.clear();
+  Segment::numSegments = 0;
+  Segment::totalLength = 0;
+  segments.push_back(new Segment(1));
+  segments.push_back(new Segment(1));
   Vector3d endPoint         = getEndPoint();
   float distanceToGoal      = distanceBetween(endPoint, goal);
   double lambda             = 1;
@@ -177,36 +182,39 @@ void inverseKinematicsSolver() {
   MatrixXd pseudoJacobian;
   VectorXd addToRots = Vector3d(0,0,0);
 
-  // if (Segment::totalLength < distanceBetween(Vector3d(0,0,0), goal)) { 
-  //   goal = goal.normalized() * Segment::totalLength; 
-  // }
+  if (Segment::totalLength < distanceBetween(Vector3d(0,0,0), realGoal)) { 
+    goal = realGoal.normalized() * Segment::totalLength; 
+    cout << "TO BID" << endl;
+    glBegin(GL_LINES);
+    glVertex3d(0,0,0);
+    glVertex3d(goal[0], goal[1], goal[2]);
+    glEnd();
+    return;
+  }
+  cout << "BANG" << endl;
 
 
-  while (distanceToGoal > acceptableDistance && numCalcs < 1000*Segment::numSegments) {
+  while (distanceToGoal > acceptableDistance && numCalcs < 100*Segment::numSegments && lambda > 0.01) {
     numCalcs++;
     jacobian       = computeJacobian();
-    cout << "jacobian \n" << jacobian << endl;
     pseudoJacobian = computePseudoInverse(jacobian, goal, endPoint);
-    cout << "pseudoJacobian \n" << pseudoJacobian << endl;    
     addToRots      = pseudoJacobian*(goal - endPoint);
     updateSegmentRotations(addToRots*lambda);
-    cout << "addToRots: \n" << addToRots << endl;
     endPoint = getEndPoint(); //correct reupdating?
     newDistanceToGoal = distanceBetween(endPoint, goal);
-    // cout << "newDistanceToGoal: " << newDistanceToGoal << endl;
-    if (distanceToGoal < newDistanceToGoal) {
-      for (int i=0; i<Segment::numSegments; i++) segments[i]->transMatrix = segments[i]->oldTransMatrix;
-      lambda *= .5;
-    }
-    distanceToGoal = distanceBetween(endPoint, goal);
-    // glLoadIdentity();
-    // glBegin(GL_LINES); 
-    // for (int i=0; i<Segment::numSegments; i++) {
-    //   glVertex3d(segments[i]->jointLoc[0], segments[i]->jointLoc[1], segments[i]->jointLoc[2]);
-    //   glVertex3d(segments[i]->end[0], segments[i]->end[1], segments[i]->end[2]);
+
+    // if (distanceToGoal < newDistanceToGoal) {
+    //   for (int i=0; i<Segment::numSegments; i++) {
+    //     segments[i]->transMatrix = segments[i]->oldTransMatrix;
+    //   }
+    //   lambda *= .5;
+    // } else {
+    //   lambda = 1;
     // }
-    // glEnd();
+    endPoint = getEndPoint();
+    distanceToGoal = distanceBetween(endPoint, goal);
   }
+  getEndPoint(Segment::numSegments, true);
 }
 
 
@@ -312,7 +320,6 @@ void myDisplay() {
   glVertex3f(realGoal[0], realGoal[1], realGoal[2]);
   glEnd();
   inverseKinematicsSolver();
-  getEndPoint(Segment::numSegments, true);
 
   //-----------------------------------------------------------------------
 
@@ -336,8 +343,8 @@ void myFrameMove() {
 void timer(int v) {
   glLoadIdentity();
   timeCount++;
-  // goal[1] = sin(timeCount)+0;
-  // realGoal[1] = sin(timeCount)+0;
+  goal[1] = sin(timeCount)+0;
+  realGoal[1] = sin(timeCount)+0;
   goal[1] = .5*(cos(timeCount))+1;
   realGoal[1] = .5*(cos(timeCount))+1;
   // goal[2] = sin(timeCount)+0;
